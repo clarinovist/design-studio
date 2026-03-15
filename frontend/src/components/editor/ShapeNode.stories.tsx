@@ -3,7 +3,7 @@ import { ShapeNode } from './ShapeNode';
 import { Stage, Layer } from 'react-konva';
 import { CanvasElement } from '@/store/useCanvasStore';
 
-import { userEvent, within, expect } from '@storybook/test';
+import { within } from '@storybook/test';
 
 /**
  * ShapeNode renders different shapes on the Konva canvas.
@@ -66,7 +66,7 @@ export const SelectedRectangle: Story = {
   },
   play: async ({ canvasElement }) => {
     // The Transformer should be visible when selected
-    const canvas = within(canvasElement);
+    within(canvasElement);
     // Since Konva renders to canvas, we can't easily query DOM nodes inside it via regular Testing Library,
     // but the interaction setup verifies it doesn't crash.
   },

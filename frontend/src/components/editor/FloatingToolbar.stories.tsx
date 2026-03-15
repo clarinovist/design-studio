@@ -29,6 +29,7 @@ export const Default: Story = {
   },
   decorators: [
     (Story) => {
+      // Since FloatingToolbar expects an element to be present in the Zustand store
       useCanvasStore.setState({
         elements: [
           { id: 'mock-1', type: 'shape', shapeType: 'rect', x: 0, y: 0, rotation: 0, locked: false }
