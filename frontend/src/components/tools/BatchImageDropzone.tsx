@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 
 import React, { useState, useRef } from "react";
 import { UploadCloud, Image as ImageIcon } from "lucide-react";
@@ -38,18 +39,18 @@ export function BatchImageDropzone({
     const filesArray = Array.from(fileList);
 
     if (filesArray.length > maxFiles) {
-        alert(`Maksimal ${maxFiles} file yang diperbolehkan.`);
+        toast.error(`Maksimal ${maxFiles} file yang diperbolehkan.`);
     }
 
     const filesToProcess = filesArray.slice(0, maxFiles);
 
     for (const file of filesToProcess) {
        if (!file.type.startsWith("image/")) {
-           alert(`File ${file.name} bukan gambar.`);
+           toast.error(`File ${file.name} bukan gambar.`);
            continue;
        }
        if (file.size > maxSizeMB * 1024 * 1024) {
-           alert(`File ${file.name} melebihi batas ${maxSizeMB}MB.`);
+           toast.error(`File ${file.name} melebihi batas ${maxSizeMB}MB.`);
            continue;
        }
        validFiles.push(file);

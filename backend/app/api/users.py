@@ -1,5 +1,6 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.exceptions import BaseAPIException, NotFoundException, ForbiddenException, ConflictException, RateLimitException, InsufficientCreditsException, BadRequestException, status
 from sqlalchemy import desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -58,7 +59,7 @@ async def delete_my_account(
     except Exception:
         await db.rollback()
         logger.exception("Failed to delete user %s", user_id)
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete account. Please try again.",
         )

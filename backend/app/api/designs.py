@@ -1,6 +1,7 @@
 """Updated designs API with generate and job status endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.exceptions import BaseAPIException, NotFoundException, ForbiddenException, ConflictException, RateLimitException, InsufficientCreditsException, BadRequestException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc
@@ -34,10 +35,10 @@ async def upload_user_image(
     from app.services.storage_service import upload_image_tracked
 
     if file.size and file.size > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large. Max 5MB.")
+        raise BadRequestException(message="File too large. Max 5MB.")
 
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are allowed.")
+        raise BadRequestException(message="Only image files are allowed.")
 
     content = await file.read()
     try:
@@ -53,7 +54,7 @@ async def upload_user_image(
         import logging
 
         logging.exception("Upload endpoint failed")
-        raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
+        raise BaseAPIException(error="INTERNAL_ERROR", message=f"Failed to upload image: {str(e)}")
 
 
 @router.post("/parse", response_model=ParsedTextElements)
@@ -69,7 +70,7 @@ async def parse_text(request: DesignGenerationRequest) -> ParsedTextElements:
         )
         return parsed
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to parse text: {str(e)}")
+        raise BaseAPIException(error="INTERNAL_ERROR", message=f"Failed to parse text: {str(e)}")
 
 
 @router.post("/clarify")
@@ -84,7 +85,7 @@ async def clarify_design_brief(request: DesignGenerationRequest) -> dict:
         import logging
 
         logging.exception("Failed to generate clarification questions")
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500,
             detail=f"Failed to generate clarification questions: {str(e)}",
         )
@@ -102,7 +103,7 @@ async def clarify_unified_brief(request: DesignGenerationRequest) -> dict:
         import logging
 
         logging.exception("Failed to generate unified clarification questions")
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500,
             detail=f"Failed to generate unified clarification questions: {str(e)}",
         )
@@ -124,7 +125,7 @@ async def modify_prompt(request: ModifyPromptRequest) -> dict:
         import logging
 
         logging.exception("Failed to modify prompt")
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to modify prompt: {str(e)}"
         )
 
@@ -142,11 +143,11 @@ async def magic_text_layout(
         text = request.get("text")
         style_hint = request.get("style_hint")
         if not image_base64 or not text:
-            raise HTTPException(status_code=400, detail="Missing image_base64 or text")
+            raise BadRequestException(message="Missing image_base64 or text")
 
         # Validate base64 is not unreasonably large (>20MB decoded ≈ ~27MB base64)
         if len(image_base64) > 30_000_000:
-            raise HTTPException(status_code=400, detail="Image too large. Max ~20MB.")
+            raise BadRequestException(message="Image too large. Max ~20MB.")
 
         canvas_width = request.get("canvas_width", 1024)
         canvas_height = request.get("canvas_height", 1024)
@@ -164,7 +165,7 @@ async def magic_text_layout(
         import logging
 
         logging.exception("Failed to generate magic text layout")
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to generate layout: {str(e)}"
         )
 
@@ -184,7 +185,7 @@ async def api_generate_project_title(
         import logging
 
         logging.exception("Failed to generate project title")
-        raise HTTPException(status_code=500, detail="Failed to generate project title")
+        raise BaseAPIException(error="INTERNAL_ERROR", message="Failed to generate project title")
 
 
 @router.post("/remove-background")
@@ -198,12 +199,12 @@ async def api_remove_background(
     Returns the URL of the processed PNG transparent image.
     """
     if not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image")
+        raise BadRequestException(message="File must be an image")
 
     # Read file content safely
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:  # 10MB limit
-        raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
+        raise BadRequestException(message="Image size exceeds 10MB limit")
 
     from app.services.bg_removal_service import remove_background
 
@@ -226,7 +227,7 @@ async def api_remove_background(
         import logging
 
         logging.exception("Failed to remove background")
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Background removal failed: {str(e)}"
         )
 
@@ -246,7 +247,7 @@ async def clarify_copywriting(
         import logging
 
         logging.exception("Failed to clarify copywriting")
-        raise HTTPException(status_code=500, detail="Failed to clarify copywriting")
+        raise BaseAPIException(error="INTERNAL_ERROR", message="Failed to clarify copywriting")
 
 
 @router.post("/generate-copywriting", response_model=CopywritingResponse)
@@ -269,7 +270,7 @@ async def generate_copywriting(
         import logging
 
         logging.exception("Failed to generate copywriting")
-        raise HTTPException(status_code=500, detail="Failed to generate copywriting")
+        raise BaseAPIException(error="INTERNAL_ERROR", message="Failed to generate copywriting")
 
 
 @router.post("/generate")
@@ -285,7 +286,7 @@ async def generate_design(
     from app.core.config import settings as app_settings
 
     if current_user.credits_remaining <= 0:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=402,
             detail="Insufficient credits. Please upgrade or wait for a refill.",
         )
@@ -411,7 +412,7 @@ async def generate_design(
                 db, current_user, 1, "Refund: gagal generate desain"
             )
             await db.commit()
-            raise HTTPException(
+            raise BaseAPIException(error="API_ERROR",
                 status_code=500, detail=f"Image generation failed to start: {str(e)}"
             )
 
@@ -604,7 +605,7 @@ async def generate_design(
 
         await log_credit_change(db, current_user, 1, "Refund: sistem error")
         await db.commit()
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Image generation failed: {str(e)}"
         )
 
@@ -652,7 +653,7 @@ async def get_job_status(
     job = result.scalar_one_or_none()
 
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise NotFoundException(message="Job not found")
 
     response = {
         "job_id": str(job.id),
@@ -691,7 +692,7 @@ async def delete_job(
 
         job_uuid = uuid.UUID(job_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid job ID format")
+        raise BadRequestException(message="Invalid job ID format")
 
     result = await db.execute(
         select(Job).where(Job.id == job_uuid, Job.user_id == current_user.id)
@@ -699,7 +700,7 @@ async def delete_job(
     job = result.scalar_one_or_none()
 
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise NotFoundException(message="Job not found")
 
     if job.result_url:
         from app.services.storage_quota_service import (

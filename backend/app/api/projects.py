@@ -1,6 +1,7 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.exceptions import BaseAPIException, NotFoundException, ForbiddenException, ConflictException, RateLimitException, InsufficientCreditsException, BadRequestException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc
@@ -63,7 +64,7 @@ async def get_project(
     project = result.scalar_one_or_none()
 
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundException(message="Project not found")
 
     return project
 
@@ -84,7 +85,7 @@ async def update_project(
     project = result.scalar_one_or_none()
 
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundException(message="Project not found")
 
     if project_in.title is not None:
         project.title = project_in.title
@@ -115,7 +116,7 @@ async def delete_project(
     project = result.scalar_one_or_none()
 
     if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+        raise NotFoundException(message="Project not found")
 
     await db.delete(project)
     await db.commit()

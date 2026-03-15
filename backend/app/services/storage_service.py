@@ -7,8 +7,12 @@ from __future__ import annotations
 import io
 import uuid
 import boto3
+import logging
 from botocore.config import Config
 from app.core.config import settings
+from app.core.exceptions import ExternalServiceException
+
+logger = logging.getLogger("api.storage")
 
 
 def _get_s3_client():
@@ -63,15 +67,16 @@ async def upload_image(
     Raises:
         Exception: The function catches exceptions and falls back to local storage, but underlying filesystem errors could theoretically still raise.
     """
+    logger.info(f"Starting image upload. Prefix: {prefix}, Content-Type: {content_type}")
+
     if (
         not settings.S3_ACCESS_KEY
         or settings.S3_ACCESS_KEY == "your_b2_application_key_id"
     ):
         # Dev-mode fallback: save to local filesystem
         import os
-        import logging
 
-        logging.warning("S3 credentials not configured – saving image locally")
+        logger.warning("S3 credentials not configured – saving image locally")
         ext = "png" if "png" in content_type else "jpg"
         if key is None:
             key = generate_key(prefix, ext)
@@ -91,6 +96,7 @@ async def upload_image(
         with open(local_path, "wb") as f:
             f.write(image_bytes)
         base = settings.BACKEND_BASE_URL.rstrip("/")
+        logger.info(f"Image saved locally: {local_path}")
         return f"{base}/static/uploads/{key}"
 
     ext = "png" if "png" in content_type else "jpg"
@@ -106,6 +112,9 @@ async def upload_image(
             ExtraArgs={"ContentType": content_type},
         )
 
+
+        logger.info(f"Successfully uploaded to S3: {key}")
+
         # Return public URL
         if settings.S3_PUBLIC_URL:
             return f"{settings.S3_PUBLIC_URL.rstrip('/')}/{key}"
@@ -116,9 +125,8 @@ async def upload_image(
     except Exception as e:
         # Fallback to local storage if S3 fails (bucket doesn't exist, etc.)
         import os
-        import logging
 
-        logging.warning(f"S3 upload failed ({e}) – saving image locally")
+        logger.error(f"S3 upload failed ({e}) – saving image locally", exc_info=True)
         local_dir = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             "static",
@@ -132,10 +140,15 @@ async def upload_image(
             "uploads",
             key,
         )
-        with open(local_path, "wb") as f:
-            f.write(image_bytes)
-        base = settings.BACKEND_BASE_URL.rstrip("/")
-        return f"{base}/static/uploads/{key}"
+        try:
+            with open(local_path, "wb") as f:
+                f.write(image_bytes)
+            base = settings.BACKEND_BASE_URL.rstrip("/")
+            logger.info(f"Fallback to local image save successful: {local_path}")
+            return f"{base}/static/uploads/{key}"
+        except Exception as local_e:
+            logger.error(f"Fallback local image save failed: {local_e}", exc_info=True)
+            raise ExternalServiceException("Failed to upload image to storage")
 
 
 async def download_image(url: str) -> bytes:
@@ -152,11 +165,17 @@ async def download_image(url: str) -> bytes:
         httpx.HTTPError: If the HTTP request fails.
     """
     import httpx
+    logger.info(f"Downloading image from URL: {url}")
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url, follow_redirects=True)
-        response.raise_for_status()
-        return response.content
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, follow_redirects=True)
+            response.raise_for_status()
+            logger.info(f"Successfully downloaded image from {url}")
+            return response.content
+    except httpx.HTTPError as e:
+        logger.error(f"Failed to download image from {url}: {e}", exc_info=True)
+        raise ExternalServiceException(f"Failed to download image: {e}")
 
 
 async def upload_image_tracked(
@@ -189,6 +208,7 @@ async def upload_image_tracked(
     """
     from app.services.storage_quota_service import check_quota, increment_usage
 
+    logger.info(f"Starting tracked upload for user {user_id}")
     file_size = len(image_bytes)
 
     # Pre-upload quota check

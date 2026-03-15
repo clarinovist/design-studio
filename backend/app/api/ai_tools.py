@@ -4,7 +4,8 @@ import uuid
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.exceptions import BaseAPIException, NotFoundException, ForbiddenException, ConflictException, RateLimitException, InsufficientCreditsException, BadRequestException, UploadFile, File, Form
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,11 +48,11 @@ async def background_swap(
     4. Uploads result to storage
     """
     if current_user.credits_remaining <= 0:
-        raise HTTPException(status_code=402, detail="Insufficient credits")
+        raise InsufficientCreditsException(message="Insufficient credits")
 
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
+        raise BadRequestException(message="Image size exceeds 10MB limit")
 
     from app.services.credit_service import log_credit_change
 
@@ -101,7 +102,7 @@ async def background_swap(
         await log_credit_change(db, current_user, 1, "Refund: gagal hapus background")
         await db.commit()
         logging.exception("Background swap failed")
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to process image: {str(e)}"
         )
 
@@ -115,7 +116,7 @@ async def upscale(
 ):
     try:
         if current_user.credits_remaining < 1:
-            raise HTTPException(status_code=402, detail="Insufficient credits")
+            raise InsufficientCreditsException(message="Insufficient credits")
 
         start_time = time.time()
 
@@ -145,7 +146,7 @@ async def upscale(
         upscaled_url = result.get("url")
 
         if not upscaled_url:
-            raise HTTPException(status_code=500, detail="Upscale failed to return URL")
+            raise BaseAPIException(error="INTERNAL_ERROR", message="Upscale failed to return URL")
 
         # 3. Download the result and upload to our S3
         async with httpx.AsyncClient() as http_client:
@@ -173,7 +174,7 @@ async def upscale(
         raise
     except Exception as e:
         logger.exception(f"Failed to process upscale request: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to process image upscaling")
+        raise BaseAPIException(error="INTERNAL_ERROR", message="Failed to process image upscaling")
 
 
 @router.post("/text-banner")
@@ -193,12 +194,12 @@ async def text_banner(
         # Validate quality
         valid_qualities = ["draft", "standard", "premium"]
         if quality not in valid_qualities:
-            raise HTTPException(status_code=400, detail="Invalid quality requested")
+            raise BadRequestException(message="Invalid quality requested")
 
         cost = 2 if quality == "premium" else 1
 
         if current_user.credits_remaining < cost:
-            raise HTTPException(status_code=402, detail="Insufficient credits")
+            raise InsufficientCreditsException(message="Insufficient credits")
 
         start_time = time.time()
 
@@ -224,7 +225,7 @@ async def text_banner(
         raise
     except Exception as e:
         logger.exception(f"Failed to generate text banner: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to generate text banner")
+        raise BaseAPIException(error="INTERNAL_ERROR", message="Failed to generate text banner")
 
 
 @router.post("/retouch")
@@ -239,11 +240,11 @@ async def retouch(
     2. Removes blemishes using Bilateral Filtering
     """
     if current_user.credits_remaining < 1:
-        raise HTTPException(status_code=402, detail="Insufficient credits")
+        raise InsufficientCreditsException(message="Insufficient credits")
 
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
+        raise BadRequestException(message="Image size exceeds 10MB limit")
 
     from app.services.credit_service import log_credit_change
 
@@ -286,7 +287,7 @@ async def retouch(
             logger.error(
                 f"CRITICAL: Failed to refund user {current_user.id}: {str(refund_err)}"
             )
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to process image: {str(e)}"
         )
 
@@ -310,29 +311,29 @@ async def create_id_photo(
     4. Resizes to standard print sizes at 300 DPI
     """
     if current_user.credits_remaining < 1:
-        raise HTTPException(status_code=402, detail="Insufficient credits")
+        raise InsufficientCreditsException(message="Insufficient credits")
 
     valid_bg_colors = ["red", "blue"]
     valid_sizes = ["2x3", "3x4", "4x6", "custom"]
     if bg_color not in valid_bg_colors:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=400,
             detail=f"Invalid bg_color '{bg_color}'. Must be one of: {valid_bg_colors}",
         )
     if size not in valid_sizes:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=400,
             detail=f"Invalid size '{size}'. Must be one of: {valid_sizes}",
         )
     if size == "custom" and (not custom_width_cm or not custom_height_cm):
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=400,
             detail="custom_width_cm and custom_height_cm are required when size is 'custom'",
         )
 
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
+        raise BadRequestException(message="Image size exceeds 10MB limit")
 
     from app.services.credit_service import log_credit_change
 
@@ -388,7 +389,7 @@ async def create_id_photo(
             logger.error(
                 f"CRITICAL: Failed to refund user {current_user.id}: {str(refund_err)}"
             )
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to process image: {str(e)}"
         )
 
@@ -407,12 +408,12 @@ async def magic_eraser(
     3. Uploads resulting image
     """
     if current_user.credits_remaining < 1:
-        raise HTTPException(status_code=402, detail="Insufficient credits")
+        raise InsufficientCreditsException(message="Insufficient credits")
 
     content = await file.read()
     mask_content = await mask.read()
     if len(content) > 10 * 1024 * 1024 or len(mask_content) > 10 * 1024 * 1024:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=400, detail="Image or mask size exceeds 10MB limit"
         )
 
@@ -460,7 +461,7 @@ async def magic_eraser(
             logger.error(
                 f"CRITICAL: Failed to refund user {current_user.id}: {str(refund_err)}"
             )
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to process image: {str(e)}"
         )
 
@@ -482,11 +483,11 @@ async def generative_expand(
     3. Returns resulting image
     """
     if current_user.credits_remaining < 1:
-        raise HTTPException(status_code=402, detail="Insufficient credits")
+        raise InsufficientCreditsException(message="Insufficient credits")
 
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
+        raise BadRequestException(message="Image size exceeds 10MB limit")
 
     from app.services.credit_service import log_credit_change
 
@@ -528,7 +529,7 @@ async def generative_expand(
             logger.error(
                 f"CRITICAL: Failed to refund user {current_user.id}: {str(refund_err)}"
             )
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to process image: {str(e)}"
         )
 
@@ -551,7 +552,7 @@ async def apply_watermark(
     logo_content = await logo.read()
 
     if len(content) > 10 * 1024 * 1024 or len(logo_content) > 5 * 1024 * 1024:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=400,
             detail="File sizes exceed limits (10MB for image, 5MB for logo)",
         )
@@ -579,7 +580,7 @@ async def apply_watermark(
 
     except Exception as e:
         logger.exception("Watermark application failed")
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to process image: {str(e)}"
         )
 
@@ -597,11 +598,11 @@ async def create_product_scene(
     Cost: 1 credit per generation.
     """
     if current_user.credits_remaining < 1:
-        raise HTTPException(status_code=402, detail="Insufficient credits")
+        raise InsufficientCreditsException(message="Insufficient credits")
 
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Image size exceeds 10MB limit")
+        raise BadRequestException(message="Image size exceeds 10MB limit")
 
     from app.services.credit_service import log_credit_change
 
@@ -638,7 +639,7 @@ async def create_product_scene(
             logger.error(
                 f"CRITICAL: Failed to refund user {current_user.id}: {str(refund_err)}"
             )
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to generate product scene: {str(e)}"
         )
 
@@ -658,7 +659,7 @@ async def process_batch_images(
     Max 10 files per batch to prevent timeouts.
     """
     if len(files) > 10:
-        raise HTTPException(status_code=400, detail="Maksimal 10 file dalam satu batch")
+        raise BadRequestException(message="Maksimal 10 file dalam satu batch")
 
     # Calculate total cost
     per_file_cost = 0
@@ -668,7 +669,7 @@ async def process_batch_images(
     total_cost = per_file_cost * len(files)
 
     if current_user.credits_remaining < total_cost:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=402, detail=f"Kredit tidak cukup. Butuh {total_cost} kredit."
         )
 
@@ -682,7 +683,7 @@ async def process_batch_images(
     if operation == "watermark" and logo:
         params["logo_bytes"] = await logo.read()
     elif operation == "watermark":
-        raise HTTPException(status_code=400, detail="Logo wajib untuk watermark")
+        raise BadRequestException(message="Logo wajib untuk watermark")
 
     # Read files
     # Only limit individual files to 5MB here for batch to save memory
@@ -690,7 +691,7 @@ async def process_batch_images(
     for f in files:
         content = await f.read()
         if len(content) > 5 * 1024 * 1024:
-            raise HTTPException(
+            raise BaseAPIException(error="API_ERROR",
                 status_code=400, detail=f"File {f.filename} terlalu besar (Max 5MB)"
             )
         file_data.append((f.filename, content))
@@ -744,6 +745,6 @@ async def process_batch_images(
                 logger.error(
                     f"CRITICAL: Failed to refund user {current_user.id}: {str(refund_err)}"
                 )
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=500, detail=f"Failed to process batch: {str(e)}"
         )

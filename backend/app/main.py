@@ -1,8 +1,14 @@
 import os
 import sentry_sdk
-from fastapi import FastAPI
+import logging
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from app.core.exceptions import BaseAPIException
+from app.schemas.error import ErrorResponse
+from app.middleware.request_id import RequestIDMiddleware, request_id_ctx_var
+from app.middleware.logging import LoggingMiddleware, setup_logging
 from app.api.auth import router as auth_router
 from app.api.designs import router as designs_router
 from app.api.templates import router as templates_router
@@ -21,7 +27,36 @@ if SENTRY_DSN:
         profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
     )
 
+# Configure Logging
+setup_logging()
+
 app = FastAPI(title="Smart Design Studio API")
+
+# Global Exception Handler
+@app.exception_handler(BaseAPIException)
+async def custom_exception_handler(request: Request, exc: BaseAPIException):
+    logger = logging.getLogger("api.error")
+    logger.error(
+        f"API Exception: {exc.error} - {exc.message}",
+        extra={
+            "error_code": exc.error,
+            "status_code": exc.status_code,
+            "details": exc.details
+        }
+    )
+
+    error_response = ErrorResponse(
+        error=exc.error,
+        message=exc.message,
+        details=exc.details,
+        request_id=request_id_ctx_var.get()
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response.model_dump(exclude_none=True),
+    )
+
 
 # Configure CORS for Next.js frontend
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
@@ -41,6 +76,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(RequestIDMiddleware)
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(designs_router, prefix="/api/designs", tags=["Designs"])

@@ -1,6 +1,10 @@
 """Service for LLM interactions (Gemini API) for text parsing, generation, and design clarification."""
 
 import json
+import logging
+from app.core.exceptions import ExternalServiceException
+
+logger = logging.getLogger("api.llm")
 from typing import Optional
 from google import genai
 from google.genai import types

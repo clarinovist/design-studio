@@ -29,7 +29,7 @@ async def rate_limit_dependency(current_user: User = Depends(get_current_user)):
         request_count = results[1]
 
         if request_count >= limit:
-            raise HTTPException(
+            raise BaseAPIException(error="API_ERROR",
                 status_code=429,
                 detail="Too many design requests. Please wait a minute before generating again.",
             )

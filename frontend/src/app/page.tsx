@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 
 import { useRouter } from "next/navigation";
 import { Sparkles, MonitorPlay, ArrowRight, Brush, Wand2, Upload, Download, ShoppingBag, ImageOff, Copy, Banknote, Store, Smartphone, Menu, X } from "lucide-react";
@@ -308,7 +309,7 @@ export default function LandingPage() {
                 {/* Email Capture Form */}
                 <div className="mt-2 text-sm text-slate-300">
                   <p className="mb-3 font-semibold text-white">Dapatkan Tips & Promo Eksklusif</p>
-                  <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); alert("Thanks for subscribing!"); }}>
+                  <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); toast.success("Thanks for subscribing!"); }}>
                     <div className="relative flex-1">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                       <input 

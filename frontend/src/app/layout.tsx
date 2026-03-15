@@ -24,6 +24,7 @@ export const metadata: Metadata = {
 };
 
 import { Toaster } from 'sonner';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function RootLayout({
   children,
@@ -41,11 +42,13 @@ export default function RootLayout({
       <body
         className={`font-sans antialiased`}
       >
-        <CSPostHogProvider>
-          <AuthProvider>{children}</AuthProvider>
-          <DeploymentGuard />
-          <WhatsAppButton />
-        </CSPostHogProvider>
+        <ErrorBoundary>
+          <CSPostHogProvider>
+            <AuthProvider>{children}</AuthProvider>
+            <DeploymentGuard />
+            <WhatsAppButton />
+          </CSPostHogProvider>
+        </ErrorBoundary>
         <Toaster theme="dark" position="bottom-center" />
       </body>
 

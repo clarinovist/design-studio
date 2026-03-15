@@ -2,6 +2,7 @@
 
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
+from app.core.exceptions import BaseAPIException, NotFoundException, ForbiddenException, ConflictException, RateLimitException, InsufficientCreditsException, BadRequestException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.core.database import get_db
@@ -52,7 +53,7 @@ async def get_template(
     template = result.scalar_one_or_none()
 
     if not template:
-        raise HTTPException(status_code=404, detail="Template not found")
+        raise NotFoundException(message="Template not found")
 
     return {
         "id": str(template.id),

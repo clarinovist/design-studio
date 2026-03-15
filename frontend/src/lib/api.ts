@@ -1,5 +1,6 @@
 import { useSession } from 'next-auth/react';
 import { useCallback } from 'react';
+import { handleAPIError, APIError } from "./errors";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -693,7 +694,7 @@ export function useProjectApi() {
         });
         if (!res.ok) {
             const errBase = await res.json().catch(() => ({}));
-            console.error("saveBrandKit error response json:", errBase);
+            handleAPIError(errBase);
             throw new Error(errBase.detail || 'Failed to save Brand Kit');
         }
         return res.json();

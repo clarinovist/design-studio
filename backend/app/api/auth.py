@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.exceptions import BaseAPIException, NotFoundException, ForbiddenException, ConflictException, RateLimitException, InsufficientCreditsException, BadRequestException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -20,7 +21,7 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email is already registered",
         )
@@ -56,18 +57,18 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
 
     if not user.password_hash:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="This account uses Google Login. Please sign in with Google.",
         )
 
     if not verify_password(data.password, user.password_hash):
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
         )
 

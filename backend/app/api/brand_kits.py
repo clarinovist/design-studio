@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException
+from app.core.exceptions import BaseAPIException, NotFoundException, ForbiddenException, ConflictException, RateLimitException, InsufficientCreditsException, BadRequestException, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import update
@@ -32,12 +33,12 @@ async def extract_brand_colors(
     Uses Gemini Vision. Does not save to the database.
     """
     if file.size and file.size > 5 * 1024 * 1024:
-        raise HTTPException(
+        raise BaseAPIException(error="API_ERROR",
             status_code=400, detail="File too large. Maximum size is 5MB."
         )
 
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="File must be an image.")
+        raise BadRequestException(message="File must be an image.")
 
     image_bytes = await file.read()
     colors = await extract_colors_from_image(
@@ -64,7 +65,7 @@ async def create_brand_kit(
         existing_kits = result.scalars().all()
 
         if len(existing_kits) >= MAX_BRAND_KITS_FREE:
-            raise HTTPException(
+            raise BaseAPIException(error="API_ERROR",
                 status_code=400,
                 detail=f"You can only save up to {MAX_BRAND_KITS_FREE} "
                 "Brand Kits on the free tier.",
@@ -155,7 +156,7 @@ async def update_brand_kit(
     kit = result.scalar_one_or_none()
 
     if not kit:
-        raise HTTPException(status_code=404, detail="Brand Kit not found.")
+        raise NotFoundException(message="Brand Kit not found.")
 
     update_data = kit_update.model_dump(exclude_unset=True)
 
@@ -198,7 +199,7 @@ async def delete_brand_kit(
     kit = result.scalar_one_or_none()
 
     if not kit:
-        raise HTTPException(status_code=404, detail="Brand Kit not found.")
+        raise NotFoundException(message="Brand Kit not found.")
 
     # Decrement storage usage for all logos in this brand kit
     from app.services.storage_quota_service import estimate_file_size, decrement_usage

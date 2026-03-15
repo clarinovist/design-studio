@@ -22,7 +22,7 @@ async def get_current_user(
             email = dev_email
             name = "Dev User"
         else:
-            raise HTTPException(
+            raise BaseAPIException(error="API_ERROR",
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Not authenticated",
                 headers={"WWW-Authenticate": "Bearer"},
@@ -35,10 +35,10 @@ async def get_current_user(
             name = payload.get("name")
 
             if not email:
-                raise HTTPException(status_code=401, detail="Invalid token payload")
+                raise ForbiddenException(message="Invalid token payload")
 
         except Exception:
-            raise HTTPException(
+            raise BaseAPIException(error="API_ERROR",
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
