@@ -20,11 +20,24 @@ from app.models.job import Job
 from app.api.deps import get_current_user
 from app.api.rate_limit import rate_limit_dependency
 from app.models.user import User
+from app.schemas.error import ERROR_RESPONSES
 
-router = APIRouter()
+router = APIRouter(tags=["Designs"])
 
 
-@router.post("/upload")
+@router.post(
+    "/upload",
+    status_code=status.HTTP_200_OK,
+    summary="Upload user image",
+    description="Uploads an image file for use in a design or as a reference. Tracks storage quota and returns the public URL.",
+    responses={
+        200: {"description": "Image successfully uploaded"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def upload_user_image(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -56,7 +69,19 @@ async def upload_user_image(
         raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
 
 
-@router.post("/parse", response_model=ParsedTextElements)
+@router.post(
+    "/parse",
+    response_model=ParsedTextElements,
+    status_code=status.HTTP_200_OK,
+    summary="Parse raw design text",
+    description="Analyzes the provided raw promotional text using AI to extract semantic elements (headline, sub-headline, CTA). It also generates a visual background prompt, categorized prompt parts, layout decisions, and color suggestions based on the context.",
+    responses={
+        200: {"description": "Text successfully parsed and analyzed"},
+        400: ERROR_RESPONSES[400],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def parse_text(request: DesignGenerationRequest) -> ParsedTextElements:
     """Preview functionality: parse text into structured elements without generating the image."""
     try:
@@ -72,7 +97,18 @@ async def parse_text(request: DesignGenerationRequest) -> ParsedTextElements:
         raise HTTPException(status_code=500, detail=f"Failed to parse text: {str(e)}")
 
 
-@router.post("/clarify")
+@router.post(
+    "/clarify",
+    status_code=status.HTTP_200_OK,
+    summary="Generate clarifying questions for design brief",
+    description="Analyzes the provided raw text using AI to generate 3-4 specific questions (in Indonesian) aimed at clarifying the user's design intent, target audience, and style preferences.",
+    responses={
+        200: {"description": "Clarification questions generated successfully"},
+        400: ERROR_RESPONSES[400],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def clarify_design_brief(request: DesignGenerationRequest) -> dict:
     """Analyze raw text and return 3-4 specific clarifying questions."""
     from app.services.llm_service import generate_design_brief_questions
@@ -90,7 +126,18 @@ async def clarify_design_brief(request: DesignGenerationRequest) -> dict:
         )
 
 
-@router.post("/clarify-unified")
+@router.post(
+    "/clarify-unified",
+    status_code=status.HTTP_200_OK,
+    summary="Generate unified clarifying questions",
+    description="Analyzes a product description to generate 3-4 clarifying questions designed to gather information useful for both copywriting and subsequent design generation.",
+    responses={
+        200: {"description": "Unified clarification questions generated successfully"},
+        400: ERROR_RESPONSES[400],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def clarify_unified_brief(request: DesignGenerationRequest) -> dict:
     """Analyze raw text and return combined clarifying questions for both design and copywriting."""
     from app.services.llm_service import generate_unified_brief_questions
@@ -108,7 +155,18 @@ async def clarify_unified_brief(request: DesignGenerationRequest) -> dict:
         )
 
 
-@router.post("/modify-prompt")
+@router.post(
+    "/modify-prompt",
+    status_code=status.HTTP_200_OK,
+    summary="Modify visual prompt with AI",
+    description="Accepts user instructions to modify an existing visual prompt. Uses AI to intelligently update only the relevant prompt parts (e.g., changing 'sunny' to 'rainy') while maintaining the overall context. Returns the updated prompt parts, combined prompt, and Indonesian translation.",
+    responses={
+        200: {"description": "Visual prompt successfully modified"},
+        400: ERROR_RESPONSES[400],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def modify_prompt(request: ModifyPromptRequest) -> dict:
     """Modifies visual prompt parts via Gemini based on Indonesian text instructions."""
     from app.services.llm_service import modify_visual_prompt
@@ -129,7 +187,19 @@ async def modify_prompt(request: ModifyPromptRequest) -> dict:
         )
 
 
-@router.post("/magic-text")
+@router.post(
+    "/magic-text",
+    status_code=status.HTTP_200_OK,
+    summary="Generate Magic Text layout",
+    description="Analyzes the provided canvas image alongside the text content using a multimodal AI model to automatically suggest the optimal layout, typography, and styling for the text elements to ensure high readability and aesthetic appeal.",
+    responses={
+        200: {"description": "Magic text layout generated successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def magic_text_layout(
     request: dict,
     current_user: User = Depends(rate_limit_dependency),
@@ -169,7 +239,20 @@ async def magic_text_layout(
         )
 
 
-@router.post("/generate-title", response_model=GenerateTitleResponse)
+@router.post(
+    "/generate-title",
+    response_model=GenerateTitleResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate a project title",
+    description="Uses AI to generate a concise, 2-5 word descriptive title for a project based on the user's initial design prompt.",
+    responses={
+        200: {"description": "Title successfully generated"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def api_generate_project_title(
     request: GenerateTitleRequest,
     current_user: User = Depends(rate_limit_dependency),
@@ -187,9 +270,21 @@ async def api_generate_project_title(
         raise HTTPException(status_code=500, detail="Failed to generate project title")
 
 
-@router.post("/remove-background")
+@router.post(
+    "/remove-background",
+    status_code=status.HTTP_200_OK,
+    summary="Remove image background",
+    description="Removes the background from an uploaded image file using the rembg library. The resulting transparent image is uploaded to S3 and its public URL is returned.",
+    responses={
+        200: {"description": "Background successfully removed"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def api_remove_background(
-    file: UploadFile = File(...),
+    file: UploadFile = File(..., description="Image file to process"),
     current_user: User = Depends(rate_limit_dependency),
     db: AsyncSession = Depends(get_db),
 ):
@@ -231,7 +326,19 @@ async def api_remove_background(
         )
 
 
-@router.post("/clarify-copywriting")
+@router.post(
+    "/clarify-copywriting",
+    status_code=status.HTTP_200_OK,
+    summary="Generate clarifying questions for copywriting",
+    description="Analyzes the provided product description to generate 3-4 specific questions aimed at gathering more context (e.g., target audience, unique selling points) to produce better marketing copy.",
+    responses={
+        200: {"description": "Clarification questions generated successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def clarify_copywriting(
     request: CopywritingClarifyRequest,
     current_user: User = Depends(rate_limit_dependency),
@@ -249,7 +356,20 @@ async def clarify_copywriting(
         raise HTTPException(status_code=500, detail="Failed to clarify copywriting")
 
 
-@router.post("/generate-copywriting", response_model=CopywritingResponse)
+@router.post(
+    "/generate-copywriting",
+    response_model=CopywritingResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Generate marketing copywriting",
+    description="Uses AI to generate 3 distinct variations (e.g., FOMO, Benefit, Social Proof) of promotional copywriting based on the provided product description, tone, and any clarification answers.",
+    responses={
+        200: {"description": "Copywriting variations generated successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def generate_copywriting(
     request: CopywritingRequest,
     current_user: User = Depends(rate_limit_dependency),
@@ -272,7 +392,20 @@ async def generate_copywriting(
         raise HTTPException(status_code=500, detail="Failed to generate copywriting")
 
 
-@router.post("/generate")
+@router.post(
+    "/generate",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Generate design project",
+    description="Initiates an asynchronous background job to generate design variations based on the provided brief. Deducts credits from the user and creates an initial project record. Returns the Job ID to poll for status.",
+    responses={
+        202: {"description": "Generation job accepted and queued"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        402: {"description": "Payment Required - Insufficient credits"},
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def generate_design(
     request: DesignGenerationRequest,
     db: AsyncSession = Depends(get_db),
@@ -609,7 +742,18 @@ async def generate_design(
         )
 
 
-@router.get("/my-generations")
+@router.get(
+    "/my-generations",
+    status_code=status.HTTP_200_OK,
+    summary="Get user generation history",
+    description="Retrieves a paginated list of past design generation jobs and their associated projects for the authenticated user.",
+    responses={
+        200: {"description": "Generation history retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def get_my_generations(
     limit: int = 20,
     offset: int = 0,
@@ -642,7 +786,20 @@ async def get_my_generations(
     ]
 
 
-@router.get("/jobs/{job_id}")
+@router.get(
+    "/jobs/{job_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Get job status",
+    description="Retrieves the current status (queued, processing, completed, failed) of a specific background generation job. If completed, the response includes the generated design variations.",
+    responses={
+        200: {"description": "Job status retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def get_job_status(
     job_id: str,
     db: AsyncSession = Depends(get_db),
@@ -679,7 +836,20 @@ async def get_job_status(
     return response
 
 
-@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/jobs/{job_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete job record",
+    description="Permanently deletes a generation job record from the user's history.",
+    responses={
+        204: {"description": "Job record deleted successfully"},
+        401: ERROR_RESPONSES[401],
+        403: ERROR_RESPONSES[403],
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def delete_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),

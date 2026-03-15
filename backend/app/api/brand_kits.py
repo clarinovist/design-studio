@@ -15,16 +15,29 @@ from app.schemas.brand_kit import (
     BrandKitResponse,
     ColorExtractionResponse,
 )
+from app.schemas.error import ERROR_RESPONSES
 from app.services.brand_kit_service import extract_colors_from_image
 
-router = APIRouter()
+router = APIRouter(tags=["Brand Kits"])
 
 MAX_BRAND_KITS_FREE = 3
 
 
-@router.post("/extract", response_model=ColorExtractionResponse)
+@router.post(
+    "/extract",
+    response_model=ColorExtractionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Extract colors from an image",
+    description="Analyzes an uploaded logo or image using AI to extract exactly 5 dominant brand colors, returning them as standard color swatches. Does not save to the database.",
+    responses={
+        200: {"description": "Colors successfully extracted"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def extract_brand_colors(
-    file: UploadFile = File(...),
+    file: UploadFile = File(..., description="Image file to extract colors from (max 5MB)"),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -47,7 +60,20 @@ async def extract_brand_colors(
     return ColorExtractionResponse(colors=colors)
 
 
-@router.post("", response_model=BrandKitResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=BrandKitResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new Brand Kit",
+    description="Saves a new Brand Kit containing logos, colors, and typography settings for the current user. Also sets it as the active kit.",
+    responses={
+        201: {"description": "Brand Kit created successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def create_brand_kit(
     brand_kit_in: BrandKitCreate,
     current_user: User = Depends(get_current_user),
@@ -102,7 +128,18 @@ async def create_brand_kit(
         raise
 
 
-@router.get("", response_model=List[BrandKitResponse])
+@router.get(
+    "",
+    response_model=List[BrandKitResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List all Brand Kits",
+    description="Retrieves a list of all Brand Kits owned by the current authenticated user, ordered by creation date descending.",
+    responses={
+        200: {"description": "Brand Kits retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def list_brand_kits(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -119,7 +156,18 @@ async def list_brand_kits(
     return kits
 
 
-@router.get("/active", response_model=Optional[BrandKitResponse])
+@router.get(
+    "/active",
+    response_model=Optional[BrandKitResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get active Brand Kit",
+    description="Retrieves the currently active Brand Kit for the user. Returns null if none are marked active.",
+    responses={
+        200: {"description": "Active Brand Kit retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def get_active_brand_kit(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -137,7 +185,20 @@ async def get_active_brand_kit(
     return active_kit
 
 
-@router.put("/{kit_id}", response_model=BrandKitResponse)
+@router.put(
+    "/{kit_id}",
+    response_model=BrandKitResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update a Brand Kit",
+    description="Updates the properties of a specific Brand Kit. If `is_active` is true, automatically deactivates all other kits for this user.",
+    responses={
+        200: {"description": "Brand Kit updated successfully"},
+        401: ERROR_RESPONSES[401],
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def update_brand_kit(
     kit_id: UUID,
     kit_update: BrandKitUpdate,
@@ -181,7 +242,18 @@ async def update_brand_kit(
     return kit
 
 
-@router.delete("/{kit_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{kit_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a Brand Kit",
+    description="Permanently deletes a specific Brand Kit and frees up the storage quota associated with its uploaded logos.",
+    responses={
+        204: {"description": "Brand Kit deleted successfully"},
+        401: ERROR_RESPONSES[401],
+        404: ERROR_RESPONSES[404],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def delete_brand_kit(
     kit_id: UUID,
     current_user: User = Depends(get_current_user),

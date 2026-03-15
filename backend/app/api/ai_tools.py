@@ -4,8 +4,9 @@ import uuid
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 import httpx
+from app.schemas.error import ERROR_RESPONSES
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
@@ -27,11 +28,23 @@ import json
 from typing import List
 from app.services.storage_service import upload_image  # Corrected from upload_imager
 
-router = APIRouter()
+router = APIRouter(tags=["AI Tools"])
 logger = logging.getLogger(__name__)
 
 
-@router.post("/background-swap")
+@router.post(
+    "/background-swap",
+    status_code=status.HTTP_200_OK,
+    summary="Swap image background",
+    description="Removes the existing background of the uploaded product image and replaces it with an AI-generated scene based on the provided prompt.",
+    responses={
+        200: {"description": "Background successfully swapped"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def background_swap(
     file: UploadFile = File(...),
     prompt: str = Form(...),
@@ -106,7 +119,19 @@ async def background_swap(
         )
 
 
-@router.post("/upscale")
+@router.post(
+    "/upscale",
+    status_code=status.HTTP_200_OK,
+    summary="Upscale image",
+    description="Enhances and upscales the resolution of the uploaded image using AI models.",
+    responses={
+        200: {"description": "Image successfully upscaled"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def upscale(
     file: UploadFile = File(...),
     scale: float = Form(2.0),
@@ -176,7 +201,19 @@ async def upscale(
         raise HTTPException(status_code=500, detail="Failed to process image upscaling")
 
 
-@router.post("/text-banner")
+@router.post(
+    "/text-banner",
+    status_code=status.HTTP_200_OK,
+    summary="Generate text banner",
+    description="Overlays highly readable, styled promotional text onto the uploaded image. Best for generating quick social media or advertising banners.",
+    responses={
+        200: {"description": "Banner successfully generated"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def text_banner(
     text: str = Form(...),
     style: str = Form("ribbon"),
@@ -227,7 +264,19 @@ async def text_banner(
         raise HTTPException(status_code=500, detail="Failed to generate text banner")
 
 
-@router.post("/retouch")
+@router.post(
+    "/retouch",
+    status_code=status.HTTP_200_OK,
+    summary="Retouch and enhance image",
+    description="Automatically retouches the uploaded image by enhancing lighting, colors, and sharpness.",
+    responses={
+        200: {"description": "Image successfully retouched"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def retouch(
     file: UploadFile = File(...),
     output_format: str = Form("jpeg"),
@@ -291,7 +340,19 @@ async def retouch(
         )
 
 
-@router.post("/id-photo")
+@router.post(
+    "/id-photo",
+    status_code=status.HTTP_200_OK,
+    summary="Generate ID photo",
+    description="Converts an uploaded portrait into a formal ID photo. Automatically removes the background, applies a solid color (e.g., blue or red), and standardizes the aspect ratio.",
+    responses={
+        200: {"description": "ID photo successfully generated"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def create_id_photo(
     file: UploadFile = File(...),
     bg_color: str = Form("red"),
@@ -393,7 +454,19 @@ async def create_id_photo(
         )
 
 
-@router.post("/magic-eraser")
+@router.post(
+    "/magic-eraser",
+    status_code=status.HTTP_200_OK,
+    summary="Magic eraser",
+    description="Removes unwanted objects from an uploaded image based on a provided mask image or prompt, intelligently filling in the background.",
+    responses={
+        200: {"description": "Object successfully erased"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def magic_eraser(
     file: UploadFile = File(...),
     mask: UploadFile = File(...),
@@ -465,7 +538,19 @@ async def magic_eraser(
         )
 
 
-@router.post("/generative-expand")
+@router.post(
+    "/generative-expand",
+    status_code=status.HTTP_200_OK,
+    summary="Generative expand",
+    description="Expands the borders of the uploaded image to the target aspect ratio, using AI to intelligently fill the new space.",
+    responses={
+        200: {"description": "Image successfully expanded"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def generative_expand(
     file: UploadFile = File(...),
     direction: Optional[str] = Form(None),
@@ -533,7 +618,19 @@ async def generative_expand(
         )
 
 
-@router.post("/watermark")
+@router.post(
+    "/watermark",
+    status_code=status.HTTP_200_OK,
+    summary="Add watermark",
+    description="Overlays a text or image watermark onto the provided image.",
+    responses={
+        200: {"description": "Watermark successfully added"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def apply_watermark(
     file: UploadFile = File(...),
     logo: UploadFile = File(...),
@@ -584,7 +681,19 @@ async def apply_watermark(
         )
 
 
-@router.post("/product-scene")
+@router.post(
+    "/product-scene",
+    status_code=status.HTTP_200_OK,
+    summary="Generate product scene",
+    description="Places the provided product image into a styled scene or environment based on the given theme or prompt.",
+    responses={
+        200: {"description": "Product scene successfully generated"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def create_product_scene(
     file: UploadFile = File(...),
     theme: str = Form("studio"),
@@ -643,7 +752,19 @@ async def create_product_scene(
         )
 
 
-@router.post("/batch")
+@router.post(
+    "/batch",
+    status_code=status.HTTP_200_OK,
+    summary="Batch process images",
+    description="Applies a specific tool (e.g., remove_bg, upscale, watermark) to multiple uploaded images simultaneously.",
+    responses={
+        200: {"description": "Batch processing completed successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def process_batch_images(
     files: List[UploadFile] = File(...),
     operation: str = Form(...),

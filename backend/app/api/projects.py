@@ -11,11 +11,23 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.project import Project
 from app.schemas.project import ProjectResponse, ProjectUpdate
+from app.schemas.error import ERROR_RESPONSES
 
-router = APIRouter()
+router = APIRouter(tags=["Projects"])
 
 
-@router.get("/", response_model=List[ProjectResponse])
+@router.get(
+    "/",
+    response_model=List[ProjectResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List all projects",
+    description="Retrieves a list of all canvas projects saved by the current authenticated user, ordered by the most recently updated.",
+    responses={
+        200: {"description": "Projects retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def list_projects(
     db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)
 ):
@@ -28,7 +40,20 @@ async def list_projects(
     return result.scalars().all()
 
 
-@router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new project",
+    description="Saves a new project along with its initial canvas state and layout properties.",
+    responses={
+        201: {"description": "Project created successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def create_project(
     project_in: ProjectUpdate,
     db: AsyncSession = Depends(get_db),
@@ -48,7 +73,20 @@ async def create_project(
     return db_project
 
 
-@router.get("/{project_id}", response_model=ProjectResponse)
+@router.get(
+    "/{project_id}",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get project details",
+    description="Retrieves the full details and canvas state of a specific project owned by the current user.",
+    responses={
+        200: {"description": "Project retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def get_project(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),
@@ -68,7 +106,21 @@ async def get_project(
     return project
 
 
-@router.put("/{project_id}", response_model=ProjectResponse)
+@router.put(
+    "/{project_id}",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update a project",
+    description="Updates an existing project's canvas state, title, status, or aspect ratio.",
+    responses={
+        200: {"description": "Project updated successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def update_project(
     project_id: UUID,
     project_in: ProjectUpdate,
@@ -100,7 +152,19 @@ async def update_project(
     return project
 
 
-@router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{project_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a project",
+    description="Permanently deletes a saved project.",
+    responses={
+        204: {"description": "Project deleted successfully"},
+        401: ERROR_RESPONSES[401],
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def delete_project(
     project_id: UUID,
     db: AsyncSession = Depends(get_db),

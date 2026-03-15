@@ -11,19 +11,44 @@ from app.models.job import Job
 from app.models.user import User
 from app.schemas.credit import CreditHistoryResponse
 from app.schemas.user import UserUpdate, UserResponse
+from app.schemas.error import ERROR_RESPONSES
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["Users"])
 
 
-@router.get("/me", response_model=UserResponse)
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get current user profile",
+    description="Returns the profile and credits of the currently authenticated user.",
+    responses={
+        200: {"description": "User profile retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def get_my_profile(current_user: User = Depends(get_current_user)):
     """Returns the current user's profile and credits."""
     return current_user
 
 
-@router.put("/me", response_model=UserResponse)
+@router.put(
+    "/me",
+    response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update current user profile",
+    description="Updates the profile information (e.g., name) of the currently authenticated user.",
+    responses={
+        200: {"description": "User profile updated successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def update_my_profile(
     user_update: UserUpdate,
     current_user: User = Depends(get_current_user),
@@ -39,7 +64,17 @@ async def update_my_profile(
     return current_user
 
 
-@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/me",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete current user account",
+    description="Deletes the currently authenticated user's account and all associated data, including jobs, projects, and design history.",
+    responses={
+        204: {"description": "User account deleted successfully"},
+        401: ERROR_RESPONSES[401],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def delete_my_account(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ) -> None:
@@ -65,7 +100,19 @@ async def delete_my_account(
     return None
 
 
-@router.get("/me/credits/history", response_model=CreditHistoryResponse)
+@router.get(
+    "/me/credits/history",
+    response_model=CreditHistoryResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get credit history",
+    description="Returns a paginated list of the user's credit transaction history.",
+    responses={
+        200: {"description": "Credit history retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def get_my_credit_history(
     limit: int = 50,
     offset: int = 0,
@@ -92,7 +139,17 @@ async def get_my_credit_history(
     return CreditHistoryResponse(transactions=transactions, total_count=total_count)
 
 
-@router.get("/me/storage")
+@router.get(
+    "/me/storage",
+    status_code=status.HTTP_200_OK,
+    summary="Get storage usage",
+    description="Returns the current user's storage usage and their total allowed quota.",
+    responses={
+        200: {"description": "Storage stats retrieved successfully"},
+        401: ERROR_RESPONSES[401],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def get_my_storage(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

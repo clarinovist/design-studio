@@ -6,11 +6,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.core.database import get_db
 from app.models.template import Template
+from app.schemas.error import ERROR_RESPONSES
+from pydantic import BaseModel, Field
 
-router = APIRouter()
+router = APIRouter(tags=["Templates"])
 
 
-@router.get("/")
+class TemplateResponse(BaseModel):
+    """
+    Schema representing a design template.
+    """
+    id: str = Field(..., description="Template ID")
+    name: str = Field(..., description="Template name")
+    category: str = Field(..., description="Template category (e.g., social, ad)")
+    aspect_ratio: str = Field(..., description="Canvas aspect ratio (e.g., 1:1, 16:9)")
+    style: str = Field(..., description="Visual style of the template")
+    default_text_layers: list = Field(..., description="Default text layer configuration")
+    prompt_suffix: Optional[str] = Field(None, description="Prompt modifiers added to generation")
+    thumbnail_url: Optional[str] = Field(None, description="URL to a thumbnail preview image")
+
+
+@router.get(
+    "/",
+    response_model=list[TemplateResponse],
+    status_code=200,
+    summary="List templates",
+    description="Lists available design templates, optionally filtering by category or aspect ratio.",
+    responses={
+        200: {"description": "Templates successfully retrieved"},
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def list_templates(
     category: Optional[str] = None,
     aspect_ratio: Optional[str] = None,
@@ -42,7 +69,19 @@ async def list_templates(
     ]
 
 
-@router.get("/{template_id}")
+@router.get(
+    "/{template_id}",
+    response_model=TemplateResponse,
+    status_code=200,
+    summary="Get template details",
+    description="Retrieves the full details of a specific design template by its ID.",
+    responses={
+        200: {"description": "Template retrieved successfully"},
+        404: ERROR_RESPONSES[404],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def get_template(
     template_id: str,
     db: AsyncSession = Depends(get_db),

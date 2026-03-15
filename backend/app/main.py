@@ -21,7 +21,72 @@ if SENTRY_DSN:
         profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.1")),
     )
 
-app = FastAPI(title="Smart Design Studio API")
+# Get API version from VERSION file
+try:
+    with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "../VERSION"), "r") as f:
+        API_VERSION = f.read().strip()
+except Exception:
+    API_VERSION = "1.0.0"
+
+
+tags_metadata = [
+    {
+        "name": "Authentication",
+        "description": "Operations to authenticate and manage user access tokens.",
+    },
+    {
+        "name": "Users",
+        "description": "User profile, credits, and account management.",
+    },
+    {
+        "name": "Brand Kits",
+        "description": "Manage brand identity elements (colors, typography, logos).",
+    },
+    {
+        "name": "Projects",
+        "description": "Canvas projects and layouts management.",
+    },
+    {
+        "name": "Designs",
+        "description": "AI-powered image and design generation endpoints.",
+    },
+    {
+        "name": "AI Tools",
+        "description": "AI assistance for writing copy, generating titles, and magic text features.",
+    },
+    {
+        "name": "History",
+        "description": "Past generated designs and activity history.",
+    },
+    {
+        "name": "Templates",
+        "description": "Pre-made templates to start designs from.",
+    },
+]
+
+app = FastAPI(
+    title="Smart Design Studio API",
+    description="""
+    Comprehensive API for Smart Design Studio.
+
+    This backend provides powerful tools to manage user accounts, brand identities (Brand Kits),
+    AI-assisted design generation, copywriting, and canvas project state management.
+
+    ### Authentication
+    The API uses JWT-based authentication compatible with NextAuth. Use `Authorization: Bearer <token>` in requests.
+    """,
+    version=API_VERSION,
+    contact={
+        "name": "Smart Design Studio Support",
+        "email": "support@smartdesignstudio.test",
+    },
+    license_info={
+        "name": "Proprietary",
+    },
+    openapi_tags=tags_metadata,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 # Configure CORS for Next.js frontend
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")

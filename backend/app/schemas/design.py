@@ -19,18 +19,22 @@ class StylePreference(str, Enum):
 
 
 class DesignGenerationRequest(BaseModel):
+    """
+    Request schema to initiate the AI design generation process.
+    """
     raw_text: str = Field(
         ...,
+        description="Raw promotional text to use for the design.",
         json_schema_extra={"example": "Promo Seblak Pedas, Diskon 50% khusus Jumat"},
     )
-    reference_image_url: Optional[str] = None
-    template_id: Optional[str] = None
-    aspect_ratio: AspectRatio = AspectRatio.SQUARE
-    style_preference: StylePreference = StylePreference.BOLD
+    reference_image_url: Optional[str] = Field(None, description="URL of an optional reference image.")
+    template_id: Optional[str] = Field(None, description="Optional Template ID to base the layout upon.")
+    aspect_ratio: AspectRatio = Field(AspectRatio.SQUARE, description="Desired canvas aspect ratio.")
+    style_preference: StylePreference = Field(StylePreference.BOLD, description="Desired overall visual style.")
     color_palette_override: Optional[List[str]] = Field(
-        None, json_schema_extra={"example": ["#FF5733", "#1A1A2E"]}
+        None, description="Optional custom colors to override template/brand colors.", json_schema_extra={"example": ["#FF5733", "#1A1A2E"]}
     )
-    num_variations: int = Field(2, ge=1, le=4)
+    num_variations: int = Field(2, ge=1, le=4, description="Number of variations to generate.")
     integrated_text: bool = Field(
         False,
         description="Whether to instruct the image AI to render text directly into the pixels",
@@ -52,6 +56,17 @@ class DesignGenerationRequest(BaseModel):
         False,
         description="Whether the product image should have its background removed before compositing",
     )
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "raw_text": "Promo Seblak Pedas, Diskon 50% khusus Jumat",
+                "aspect_ratio": "1:1",
+                "style_preference": "bold",
+                "num_variations": 2
+            }
+        }
+    }
 
 
 # --- Sprint 3: AI Copywriting Models ---
@@ -184,35 +199,57 @@ class ModifyPromptResponse(BaseModel):
 
 # --- Future Week 2/3 Response Models ---
 class TextLayer(BaseModel):
-    id: str
-    role: str
-    text: str
-    font_family: str = "Poppins"
-    font_weight: int = 700
-    font_size: int = 48
-    color: str = "#FFFFFF"
-    text_align: str = "center"
-    x: float
-    y: float
-    rotation: float = 0.0
-    opacity: float = 1.0
-    shadow: Optional[str] = "2px 2px 4px rgba(0,0,0,0.5)"
-    background_box: Optional[str] = None
+    """
+    Schema for a text element layer returned in a design variation.
+    """
+    id: str = Field(..., description="Unique ID for the text layer")
+    role: str = Field(..., description="Role of the text (e.g., 'headline', 'subheadline')")
+    text: str = Field(..., description="The actual text content")
+    font_family: str = Field("Poppins", description="Font family name")
+    font_weight: int = Field(700, description="Font weight (e.g., 400, 700)")
+    font_size: int = Field(48, description="Font size in pixels")
+    color: str = Field("#FFFFFF", description="Hex or RGBA color")
+    text_align: str = Field("center", description="Text alignment (left, center, right)")
+    x: float = Field(..., description="X coordinate of the text element")
+    y: float = Field(..., description="Y coordinate of the text element")
+    rotation: float = Field(0.0, description="Rotation angle in degrees")
+    opacity: float = Field(1.0, description="Opacity value between 0.0 and 1.0")
+    shadow: Optional[str] = Field("2px 2px 4px rgba(0,0,0,0.5)", description="CSS-like shadow string")
+    background_box: Optional[str] = Field(None, description="Optional background color box string")
 
 
 class DesignVariation(BaseModel):
-    background_image_url: str
-    text_layers: List[TextLayer]
+    """
+    Schema representing a single generated design variation.
+    """
+    background_image_url: str = Field(..., description="URL of the generated background image")
+    text_layers: List[TextLayer] = Field(..., description="List of text layers placed over the background")
 
 
 class DesignGenerationResponse(BaseModel):
-    job_id: str
-    project_id: str
-    status: str
-    variations: List[DesignVariation] = []
-    credits_used: int = 0
-    credits_remaining: int = 0
-    generation_time_ms: Optional[int] = None
+    """
+    Response schema returning details of a newly queued or completed design generation job.
+    """
+    job_id: str = Field(..., description="Unique ID for the generation background job")
+    project_id: str = Field(..., description="ID of the project created to hold the result")
+    status: str = Field(..., description="Status of the generation job (e.g., 'queued', 'processing', 'completed')")
+    variations: List[DesignVariation] = Field(default_factory=list, description="Generated design variations if completed synchronously")
+    credits_used: int = Field(0, description="Number of credits consumed by this job")
+    credits_remaining: int = Field(0, description="Remaining credits in the user's account")
+    generation_time_ms: Optional[int] = Field(None, description="Time taken to generate in milliseconds")
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "job_id": "job_12345",
+                "project_id": "proj_12345",
+                "status": "queued",
+                "variations": [],
+                "credits_used": 10,
+                "credits_remaining": 490
+            }
+        }
+    }
 
 
 class MagicTextRequest(BaseModel):

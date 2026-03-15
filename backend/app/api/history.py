@@ -9,19 +9,47 @@ from app.core.database import get_db
 from app.models.design_history import DesignHistory
 from app.api.deps import get_current_user
 from app.models.user import User
-from pydantic import BaseModel
+from app.schemas.error import ERROR_RESPONSES
+from pydantic import BaseModel, Field
 
-router = APIRouter()
+router = APIRouter(tags=["History"])
 
 
 class DesignHistoryCreate(BaseModel):
-    project_id: str
-    background_url: str
-    text_layers: list
-    generation_params: Optional[dict] = None
+    """
+    Schema to create a new design history snapshot.
+    """
+    project_id: str = Field(..., description="ID of the project this history belongs to")
+    background_url: str = Field(..., description="URL of the background image")
+    text_layers: list = Field(..., description="List of text layers applied to the design")
+    generation_params: Optional[dict] = Field(None, description="Parameters used during generation")
 
 
-@router.get("/{project_id}")
+class DesignHistoryResponse(BaseModel):
+    """
+    Schema for returning a design history snapshot.
+    """
+    id: str = Field(..., description="History snapshot ID")
+    project_id: str = Field(..., description="Associated project ID")
+    background_url: str = Field(..., description="URL of the background image")
+    text_layers: list = Field(..., description="Text layers applied to the design")
+    generation_params: Optional[dict] = Field(None, description="Generation parameters")
+    created_at: Optional[str] = Field(None, description="Creation timestamp")
+
+
+@router.get(
+    "/{project_id}",
+    response_model=list[DesignHistoryResponse],
+    status_code=200,
+    summary="List design history",
+    description="Lists all design history snapshots for a specific project, ordered from newest to oldest.",
+    responses={
+        200: {"description": "History successfully retrieved"},
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def list_history(
     project_id: str,
     db: AsyncSession = Depends(get_db),
@@ -48,7 +76,20 @@ async def list_history(
     ]
 
 
-@router.post("/")
+@router.post(
+    "/",
+    response_model=DesignHistoryResponse,
+    status_code=201,
+    summary="Create history snapshot",
+    description="Saves a new snapshot of the design state to history, allowing the user to view or revert to previous variations.",
+    responses={
+        201: {"description": "History snapshot created successfully"},
+        400: ERROR_RESPONSES[400],
+        401: ERROR_RESPONSES[401],
+        422: ERROR_RESPONSES[422],
+        500: ERROR_RESPONSES[500],
+    }
+)
 async def create_history(
     data: DesignHistoryCreate,
     db: AsyncSession = Depends(get_db),
