@@ -1,4 +1,9 @@
+import { Metadata } from "next";
 import { AppHeader } from "@/components/layout/AppHeader";
+
+export const metadata: Metadata = {
+  title: "AI Tools | Smart Design Studio",
+};
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Wand2, ImagePlus, Eraser, MoveDiagonal, Sparkles, Camera, ShieldCheck, Layers } from "lucide-react";
 import Link from "next/link";

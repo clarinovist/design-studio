@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 
 import { useState } from "react";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -29,7 +30,7 @@ export default function WatermarkPlacerPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert("File terlalu besar. Maksimal 10MB");
+        toast.error("File terlalu besar. Maksimal 10MB");
         return;
       }
       setImageFile(file);
@@ -42,7 +43,7 @@ export default function WatermarkPlacerPage() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Logo terlalu besar. Maksimal 5MB");
+        toast.error("Logo terlalu besar. Maksimal 5MB");
         return;
       }
       setLogoFile(file);
@@ -55,6 +56,7 @@ export default function WatermarkPlacerPage() {
     if (!imageFile || !logoFile) return;
 
     setIsProcessing(true);
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
     const formData = new FormData();
     formData.append("file", imageFile);
     formData.append("logo", logoFile);
@@ -64,7 +66,7 @@ export default function WatermarkPlacerPage() {
 
     try {
       // Use full URL to bypass any Next.js rewrites issues for now
-      const res = await fetch("http://localhost:8000/api/tools/watermark", {
+      const res = await fetch(`${API_BASE_URL}/tools/watermark`, {
         method: "POST",
         body: formData,
       });
@@ -79,7 +81,7 @@ export default function WatermarkPlacerPage() {
       // Success
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan pada server";
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsProcessing(false);
     }

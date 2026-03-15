@@ -122,4 +122,4 @@ async def apply_watermark(
     except Exception as e:
         import logging
         logging.error(f"Failed to apply watermark: {str(e)}")
-        raise e
+        raise

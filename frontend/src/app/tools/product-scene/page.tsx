@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 
 import { useState } from "react";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -37,6 +38,7 @@ export default function ProductScenePage() {
   const handleGenerate = async () => {
     if (!originalFile || !theme) return;
     setLoading(true);
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
     try {
       const formData = new FormData();
@@ -52,7 +54,7 @@ export default function ProductScenePage() {
       }
 
       // Try local dev path
-      const res = await fetch("http://localhost:8000/api/tools/product-scene", {
+      const res = await fetch(`${API_BASE_URL}/tools/product-scene`, {
         method: "POST",
         headers,
         body: formData,
@@ -68,9 +70,9 @@ export default function ProductScenePage() {
       setStep(3);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        alert(err.message);
+        toast.error(err.message);
       } else {
-        alert(String(err));
+        toast.error(String(err));
       }
     } finally {
       setLoading(false);

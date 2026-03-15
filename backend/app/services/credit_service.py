@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 async def log_credit_change(
     db: AsyncSession, user: User, amount: int, description: str
-):
+) -> None:
     """
     Modifies the user's credits_remaining and logs a CreditTransaction.
     Note: The caller is responsible for eventually calling db.commit().
@@ -30,8 +30,8 @@ async def log_credit_change(
         )
         db.add(transaction)
 
-    except Exception as e:
+    except Exception:
         logger.exception(f"Failed to log credit change for user {user.id}")
         # We raise here because failing to log a credit transaction (especially a deduction)
         # might leave the system in an inconsistent state.
-        raise e
+        raise

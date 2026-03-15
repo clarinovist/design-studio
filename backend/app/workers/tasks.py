@@ -25,7 +25,7 @@ def _run_async(coro):
         loop.close()
 
 
-async def _update_job_status(job_id, **fields):
+async def _update_job_status(job_id, **fields) -> None:
     """Update a job record in the database."""
     async with AsyncSessionLocal() as session:
         await session.execute(update(Job).where(Job.id == job_id).values(**fields))
@@ -41,7 +41,7 @@ async def _execute_pipeline(
     integrated_text: bool,
     brand_colors: list | None = None,
     brand_typography: dict | None = None,
-):
+) -> None:
     """Execute the full generation pipeline."""
     try:
         # Step 1: Update status to processing
@@ -139,7 +139,7 @@ def generate_design_task(
     integrated_text: bool = False,
     brand_colors: list | None = None,
     brand_typography: dict | None = None,
-):
+) -> None:
     """Celery task: runs the full design generation pipeline."""
     _run_async(
         _execute_pipeline(

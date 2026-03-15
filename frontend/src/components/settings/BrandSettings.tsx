@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import React, { useState } from 'react';
 import { useBrandKit } from '@/hooks/useBrandKit';
 import { useProjectApi, BrandKitProfile, ColorRole, ColorSwatch } from '@/lib/api';
@@ -81,7 +82,7 @@ export default function BrandSettings() {
             setEditingBrand({ ...editingBrand, logos: newLogos });
         } catch (err) {
             console.error("Failed to upload logo:", err);
-            alert("Gagal mengunggah logo.");
+            toast.error("Gagal mengunggah logo.");
         } finally {
             setIsUploadingLogo(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

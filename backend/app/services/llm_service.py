@@ -236,11 +236,11 @@ async def generate_copywriting_questions(raw_text: str) -> dict:
     try:
         parsed = BriefQuestionsResponse.model_validate_json(response.text)
         return parsed.model_dump()
-    except Exception as e:
+    except Exception:
         import logging
 
         logging.exception("Error extracting copywriting questions via LLM")
-        raise e
+        raise
 
 
 UNIFIED_BRIEF_SYSTEM = """
@@ -328,11 +328,11 @@ async def generate_unified_brief_questions(raw_text: str) -> dict:
     try:
         parsed = BriefQuestionsResponse.model_validate_json(response.text)
         return parsed.model_dump()
-    except Exception as e:
+    except Exception:
         import logging
 
         logging.exception("Error extracting unified questions via LLM")
-        raise e
+        raise
 
 
 async def generate_ai_copywriting(
@@ -417,11 +417,11 @@ async def generate_ai_copywriting(
     try:
         parsed = CopywritingResponse.model_validate_json(response.text)
         return parsed.model_dump()
-    except Exception as e:
+    except Exception:
         import logging
 
         logging.exception("Error extracting copywriting via LLM")
-        raise e
+        raise
 
 
 async def parse_design_text(

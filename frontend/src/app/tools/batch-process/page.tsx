@@ -1,4 +1,5 @@
 "use client";
+import { toast } from "sonner";
 
 import { useState } from "react";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -47,9 +48,11 @@ export default function BatchProcessPage() {
   const handleGenerate = async () => {
     if (files.length === 0) return;
     if (operation === "watermark" && !logoFile) {
-        alert("Pilih file logo untuk watermark");
+        toast.error("Pilih file logo untuk watermark");
         return;
     }
+
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
     setLoading(true);
 
     try {
@@ -73,7 +76,7 @@ export default function BatchProcessPage() {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch("http://localhost:8000/api/tools/batch", {
+      const res = await fetch(`${API_BASE_URL}/tools/batch`, {
         method: "POST",
         headers,
         body: formData,
@@ -94,9 +97,9 @@ export default function BatchProcessPage() {
       setStep(3);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        alert(err.message);
+        toast.error(err.message);
       } else {
-        alert(String(err));
+        toast.error(String(err));
       }
     } finally {
       setLoading(false);
