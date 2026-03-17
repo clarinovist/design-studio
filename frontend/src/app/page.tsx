@@ -249,7 +249,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-3">AI Copywriting & Clarify</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">
-                    Bebas dari writer's block! Bingung menulis caption promosi? AI Copywriting siap membuatkan teks promosi yang menarik, relevan, dan persuasif untuk menarik pembeli.
+                    Bebas dari writer&apos;s block! Bingung menulis caption promosi? AI Copywriting siap membuatkan teks promosi yang menarik, relevan, dan persuasif untuk menarik pembeli.
                   </p>
                 </div>
 
