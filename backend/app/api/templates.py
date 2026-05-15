@@ -8,11 +8,24 @@ import json
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.redis import redis_client
 from app.models.template import Template
+from app.services.storage_service import to_asset_response_url
 
 router = APIRouter(tags=["Templates"])
+
+
+def _template_thumbnail_response_url(url: str | None) -> str | None:
+    if not isinstance(url, str) or not url.strip():
+        return url
+
+    # Keep template thumbnails public by default for marketplace/catalog surfaces.
+    if settings.TEMPLATE_THUMBNAILS_PUBLIC:
+        return url
+
+    return to_asset_response_url(url)
 
 
 @router.get(
@@ -56,7 +69,7 @@ async def list_templates(
             "style": t.style,
             "default_text_layers": t.default_text_layers,
             "prompt_suffix": t.prompt_suffix,
-            "thumbnail_url": t.thumbnail_url,
+            "thumbnail_url": _template_thumbnail_response_url(t.thumbnail_url),
             "platform": t.platform,
         }
         for t in templates
@@ -100,7 +113,7 @@ async def get_template(
         "style": template.style,
         "default_text_layers": template.default_text_layers,
         "prompt_suffix": template.prompt_suffix,
-        "thumbnail_url": template.thumbnail_url,
+        "thumbnail_url": _template_thumbnail_response_url(template.thumbnail_url),
         "platform": template.platform,
     }
 

@@ -11,6 +11,8 @@ from app.models.job import Job
 from app.models.project import Project
 from app.api.deps import get_current_user
 from app.models.user import User
+from app.services.storage_service import to_asset_response_url
+import json
 
 router = APIRouter(tags=["Designs - Jobs"])
 
@@ -34,6 +36,20 @@ def _uuid_or_none(value: Optional[str], field_name: str):
         return uuid.UUID(value)
     except ValueError:
         raise ValidationError(detail=f"Invalid {field_name} format")
+
+
+def _signed_variation_results(raw_value: Optional[str]):
+    if not raw_value:
+        return raw_value
+    try:
+        parsed = json.loads(raw_value)
+        if isinstance(parsed, list):
+            for item in parsed:
+                if isinstance(item, dict) and isinstance(item.get("result_url"), str):
+                    item["result_url"] = to_asset_response_url(item["result_url"])
+        return json.dumps(parsed)
+    except Exception:
+        return raw_value
 
 
 @router.get(
@@ -76,7 +92,7 @@ async def get_my_generations(
         {
             "id": str(job.id),
             "project_id": str(job.project_id) if job.project_id else None,
-            "result_url": job.result_url,
+            "result_url": to_asset_response_url(job.result_url) if job.result_url else None,
             "visual_prompt": job.visual_prompt,
             "raw_text": job.raw_text,
             "seed": job.seed,
@@ -124,13 +140,17 @@ async def get_job_status(
     if job.status == "completed":
         response.update(
             {
-                "result_url": job.result_url,
+                "result_url": to_asset_response_url(job.result_url)
+                if job.result_url
+                else None,
                 "headline": job.parsed_headline,
                 "sub_headline": job.parsed_sub_headline,
                 "cta": job.parsed_cta,
                 "visual_prompt": job.visual_prompt,
                 "quantum_layout": job.quantum_layout,
-                "variation_results": getattr(job, "variation_results", None),
+                "variation_results": _signed_variation_results(
+                    getattr(job, "variation_results", None)
+                ),
                 "seed": job.seed,
                 "completed_at": job.completed_at.isoformat()
                 if job.completed_at

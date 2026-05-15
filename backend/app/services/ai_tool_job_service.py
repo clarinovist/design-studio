@@ -11,6 +11,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.ai_tool_job import AiToolJob
+from app.services.storage_service import to_asset_response_url
 
 
 TERMINAL_STATUSES = {"completed", "failed", "canceled"}
@@ -28,6 +29,20 @@ def normalize_idempotency_key(idempotency_key: str | None) -> str | None:
     return f"sha256:{digest}"
 
 
+def _sign_meta_urls(value: Any) -> Any:
+    if isinstance(value, dict):
+        transformed: dict[str, Any] = {}
+        for key, item in value.items():
+            if key in {"result_url", "url", "before_url", "print_sheet_url"} and isinstance(item, str):
+                transformed[key] = to_asset_response_url(item)
+            else:
+                transformed[key] = _sign_meta_urls(item)
+        return transformed
+    if isinstance(value, list):
+        return [_sign_meta_urls(item) for item in value]
+    return value
+
+
 def serialize_job(job: AiToolJob) -> dict[str, Any]:
     payload = job.payload_json or {}
     return {
@@ -36,13 +51,15 @@ def serialize_job(job: AiToolJob) -> dict[str, Any]:
         "status": job.status,
         "progress_percent": job.progress_percent,
         "phase_message": job.phase_message,
-        "result_url": job.result_url,
+        "result_url": to_asset_response_url(job.result_url)
+        if job.result_url
+        else None,
         "error_message": job.error_message,
         "cancel_requested": job.cancel_requested,
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "started_at": job.started_at.isoformat() if job.started_at else None,
         "finished_at": job.finished_at.isoformat() if job.finished_at else None,
-        "result_meta": payload.get("_result_meta"),
+        "result_meta": _sign_meta_urls(payload.get("_result_meta")),
     }
 
 

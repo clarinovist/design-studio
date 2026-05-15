@@ -14,6 +14,7 @@ from app.models.user import User
 from app.models.project import Project
 from app.core.exceptions import NotFoundError
 from pydantic import BaseModel, Field, ConfigDict
+from app.services.storage_service import to_asset_response_url
 
 router = APIRouter(tags=["History"])
 
@@ -99,7 +100,9 @@ async def list_history(
         {
             "id": str(e.id),
             "project_id": str(e.project_id),
-            "background_url": e.background_url,
+            "background_url": to_asset_response_url(e.background_url)
+            if e.background_url
+            else None,
             "text_layers": e.text_layers,
             "generation_params": e.generation_params,
             "canvas_schema_version": e.canvas_schema_version or 1,
@@ -148,7 +151,9 @@ async def create_history(
     return {
         "id": str(entry.id),
         "project_id": str(entry.project_id),
-        "background_url": entry.background_url,
+        "background_url": to_asset_response_url(entry.background_url)
+        if entry.background_url
+        else None,
         "text_layers": entry.text_layers,
         "generation_params": entry.generation_params,
         "canvas_schema_version": entry.canvas_schema_version or 1,

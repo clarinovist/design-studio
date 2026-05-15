@@ -43,8 +43,17 @@ async def validate_uploaded_image(
         # check_quota raises safely handled AppException HTTP 413 if exceeded
         await check_quota(user_id, file_size, db)
 
+    # 3. Malware scan (feature-flagged; disabled by default)
+    from app.services.malware_scanning import scan_upload_or_raise
+    await scan_upload_or_raise(
+        file_bytes,
+        source="image_upload",
+        content_type=mime_type,
+        block_message="File gambar terdeteksi berisiko dan diblokir oleh malware scanner.",
+    )
+
     try:
-        # 3. Use Pillow to verify internal image structure incrementally
+        # 4. Use Pillow to verify internal image structure incrementally
         img = Image.open(io.BytesIO(file_bytes))
         img.verify()  # Does not decode raster data
         return mime_type

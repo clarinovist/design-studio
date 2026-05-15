@@ -32,6 +32,7 @@ from app.api.testimonials import router as testimonials_router
 from app.api.comparison_sessions import router as comparison_sessions_router
 from app.api.referrals import router as referrals_router
 from app.api.designs_routers.multi_format import router as multi_format_router
+from app.api.assets import router as assets_router
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
@@ -242,6 +243,7 @@ app.include_router(model_catalog_router, prefix="/api/models", tags=["Models"])
 app.include_router(testimonials_router, prefix="/api/testimonials", tags=["Testimonials"])
 app.include_router(comparison_sessions_router, prefix="/api/compare-models", tags=["Compare Models"])
 app.include_router(multi_format_router, prefix="/api/images", tags=["Images"])
+app.include_router(assets_router, prefix="/api/assets", tags=["Assets"])
 @app.get("/api/health", include_in_schema=False)
 @app.get(
     "/health",

@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from app.api.deps import get_db
 from app.main import app
 from app.models.template import Template
+from app.api.templates import _template_thumbnail_response_url
 
 
 def _template_result(*templates: Template) -> MagicMock:
@@ -99,3 +100,25 @@ def test_get_template_includes_platform_field() -> None:
         assert body["thumbnail_url"] == "https://example.com/whatsapp.jpg"
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+def test_template_thumbnail_policy_public_by_default(monkeypatch) -> None:
+    monkeypatch.setattr("app.api.templates.settings.TEMPLATE_THUMBNAILS_PUBLIC", True)
+    monkeypatch.setattr(
+        "app.api.templates.to_asset_response_url",
+        lambda url: f"signed:{url}",
+    )
+
+    raw = "https://example.com/template.jpg"
+    assert _template_thumbnail_response_url(raw) == raw
+
+
+def test_template_thumbnail_policy_can_be_switched_to_signed(monkeypatch) -> None:
+    monkeypatch.setattr("app.api.templates.settings.TEMPLATE_THUMBNAILS_PUBLIC", False)
+    monkeypatch.setattr(
+        "app.api.templates.to_asset_response_url",
+        lambda url: f"signed:{url}",
+    )
+
+    raw = "https://example.com/template.jpg"
+    assert _template_thumbnail_response_url(raw) == "signed:https://example.com/template.jpg"

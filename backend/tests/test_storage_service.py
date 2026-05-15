@@ -1,7 +1,13 @@
 import pytest
 from unittest.mock import patch, MagicMock, mock_open
 
-from app.services.storage_service import upload_image, download_image, generate_key
+from app.services.storage_service import (
+    upload_image,
+    download_image,
+    generate_key,
+    extract_storage_key,
+    to_asset_response_url,
+)
 
 
 @pytest.fixture
@@ -138,3 +144,31 @@ async def test_download_image(mock_client_cls):
         "http://image.url", follow_redirects=True
     )
     mock_resp.raise_for_status.assert_called_once()
+
+
+@patch("app.services.storage_service.settings")
+def test_extract_storage_key_from_public_url(mock_settings):
+    mock_settings.BACKEND_BASE_URL = "http://localhost:8000"
+    mock_settings.S3_PUBLIC_URL = "https://cdn.example.com"
+    mock_settings.S3_ENDPOINT = ""
+    mock_settings.S3_BUCKET = ""
+
+    key = extract_storage_key("https://cdn.example.com/generated/abc123.jpg?x=1")
+    assert key == "generated/abc123.jpg"
+
+
+@patch("app.services.storage_service.settings")
+@patch("app.services.storage_service.create_presigned_url")
+def test_to_asset_response_url_uses_signed_url_when_enabled(mock_create_presigned, mock_settings):
+    mock_settings.BACKEND_BASE_URL = "http://localhost:8000"
+    mock_settings.S3_PUBLIC_URL = "https://cdn.example.com"
+    mock_settings.S3_ENDPOINT = ""
+    mock_settings.S3_BUCKET = ""
+    mock_settings.STORAGE_PRIVATE_URLS_ENABLED = True
+    mock_settings.STORAGE_SIGNED_URL_TTL_SECONDS = 1200
+    mock_create_presigned.return_value = "https://signed.example.com/file"
+
+    url = to_asset_response_url("https://cdn.example.com/generated/abc123.jpg")
+
+    assert url == "https://signed.example.com/file"
+    mock_create_presigned.assert_called_once_with("generated/abc123.jpg", expires_seconds=1200)

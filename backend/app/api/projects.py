@@ -16,9 +16,38 @@ from app.models.project import Project
 from app.models.project_version import ProjectVersion
 from app.schemas.project import ProjectResponse, ProjectUpdate
 from app.schemas.project_version import ProjectVersionCreate, ProjectVersionResponse
+from app.services.storage_service import to_asset_response_url
 
 router = APIRouter(tags=["Projects"])
 logger = logging.getLogger(__name__)
+
+
+def _project_canvas_with_response_url(canvas_state: dict | None) -> dict | None:
+    if not isinstance(canvas_state, dict):
+        return canvas_state
+
+    background_url = canvas_state.get("backgroundUrl")
+    if not isinstance(background_url, str) or not background_url.strip():
+        return canvas_state
+
+    updated = dict(canvas_state)
+    updated["backgroundUrl"] = to_asset_response_url(background_url)
+    return updated
+
+
+def _serialize_project_response(project: Project) -> dict:
+    return {
+        "id": project.id,
+        "user_id": project.user_id,
+        "title": project.title,
+        "status": project.status,
+        "aspect_ratio": project.aspect_ratio,
+        "canvas_state": _project_canvas_with_response_url(project.canvas_state),
+        "canvas_schema_version": project.canvas_schema_version or 1,
+        "folder_id": project.folder_id,
+        "created_at": project.created_at,
+        "updated_at": project.updated_at,
+    }
 
 
 @router.get(
@@ -41,7 +70,8 @@ async def list_projects(
     result = await db.execute(
         query.order_by(desc(Project.updated_at))
     )
-    return result.scalars().all()
+    projects = result.scalars().all()
+    return [_serialize_project_response(project) for project in projects]
 
 
 @router.post(
@@ -97,7 +127,7 @@ async def get_project(
     if not project:
         raise NotFoundError(detail="Project not found")
 
-    return project
+    return _serialize_project_response(project)
 
 
 @router.put(

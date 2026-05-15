@@ -22,10 +22,47 @@ from app.schemas.brand_kit import (
 )
 from app.services.brand_kit_service import extract_colors_from_image
 from app.core.http_client import create_async_client
+from app.services.storage_service import to_asset_response_url
+from datetime import datetime, timezone
 
 router = APIRouter(tags=["Brand Kits"])
 
 MAX_BRAND_KITS_FREE = 3
+
+
+def _signed_brand_logo_url(url: Optional[str]) -> Optional[str]:
+    if not isinstance(url, str) or not url.strip():
+        return url
+    return to_asset_response_url(url)
+
+
+def _signed_brand_logos(logos: Optional[list]) -> list:
+    if not isinstance(logos, list):
+        return []
+    signed: list[str] = []
+    for logo in logos:
+        if isinstance(logo, str) and logo.strip():
+            signed.append(to_asset_response_url(logo))
+    return signed
+
+
+def _serialize_brand_kit_response(kit: BrandKit) -> BrandKitResponse:
+    created_at = kit.created_at or datetime.now(timezone.utc)
+    return BrandKitResponse.model_validate(
+        {
+            "id": kit.id,
+            "user_id": kit.user_id,
+            "name": kit.name,
+            "logo_url": _signed_brand_logo_url(kit.logo_url),
+            "logos": _signed_brand_logos(kit.logos),
+            "colors": kit.colors,
+            "typography": kit.typography,
+            "brand_strategy": kit.brand_strategy,
+            "is_active": kit.is_active,
+            "created_at": created_at,
+            "folder_id": kit.folder_id,
+        }
+    )
 
 
 @router.post(
@@ -79,8 +116,8 @@ async def generate_brand_kit(
 
         return BrandKitCreate(
             name=identity_json.get("name", "AI Gen Brand Kit"),
-            logo_url=result_url,
-            logos=[result_url],
+            logo_url=_signed_brand_logo_url(result_url),
+            logos=_signed_brand_logos([result_url]),
             colors=colors_data,
             typography=typography_data,
             brand_strategy=brand_strategy_data,
@@ -147,8 +184,8 @@ async def extract_brand_from_url(
 
         return BrandKitCreate(
             name=brand_name[:50],  # Ensure name isn't too long
-            logo_url=result_url,
-            logos=[result_url] if result_url else [],
+            logo_url=_signed_brand_logo_url(result_url),
+            logos=_signed_brand_logos([result_url] if result_url else []),
             colors=colors,
             typography={"primaryFont": "Inter", "secondaryFont": "Roboto"},
             folder_id=request.folder_id,
@@ -244,7 +281,7 @@ async def create_brand_kit(
         await db.commit()
         await db.refresh(new_kit)
 
-        return new_kit
+        return _serialize_brand_kit_response(new_kit)
     except Exception as e:
         import logging
 
@@ -274,7 +311,7 @@ async def list_brand_kits(
 
     result = await db.execute(query.order_by(BrandKit.created_at.desc()))
     kits = result.scalars().all()
-    return kits
+    return [_serialize_brand_kit_response(kit) for kit in kits]
 
 
 @router.get(
@@ -299,7 +336,9 @@ async def get_active_brand_kit(
     )
     active_kit = result.scalar_one_or_none()
 
-    return active_kit
+    if not active_kit:
+        return None
+    return _serialize_brand_kit_response(active_kit)
 
 
 @router.put(
@@ -353,7 +392,7 @@ async def update_brand_kit(
     await db.commit()
     await db.refresh(kit)
 
-    return kit
+    return _serialize_brand_kit_response(kit)
 
 
 @router.delete(
@@ -414,6 +453,7 @@ async def upload_brand_guidelines(
     db: AsyncSession = Depends(get_db),
 ):
     import logging
+    from app.services.malware_scanning import scan_upload_or_raise
     from app.services.rag_service import extract_text_from_pdf, chunk_and_store_guidelines
 
     # Verify ownership
@@ -436,6 +476,14 @@ async def upload_brand_guidelines(
             raise ValidationError(detail="PDF file too large. Maximum size is 10MB.")
         if not file_bytes.startswith(b"%PDF-"):
             raise ValidationError(detail="Invalid PDF file.")
+
+        await scan_upload_or_raise(
+            file_bytes,
+            filename=file.filename,
+            content_type=file.content_type,
+            source="brand_guidelines_pdf",
+            block_message="Dokumen PDF terdeteksi berisiko dan diblokir oleh malware scanner.",
+        )
 
         raw_text = await extract_text_from_pdf(file_bytes)
 

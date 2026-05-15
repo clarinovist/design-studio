@@ -6,9 +6,15 @@ Cloud storage service for uploading/downloading images to S3-compatible storage
 from __future__ import annotations
 import io
 import uuid
+import logging
+import re
+from urllib.parse import urlparse
 import boto3
 from botocore.config import Config
 from app.core.config import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 def _get_s3_client():
@@ -40,6 +46,83 @@ def generate_key(prefix: str = "generated", extension: str = "jpg") -> str:
     """
     unique_id = uuid.uuid4().hex[:12]
     return f"{prefix}/{unique_id}.{extension}"
+
+
+def extract_storage_key(url: str) -> str | None:
+    """Extract object key from known storage URL formats.
+
+    Supports local fallback static URLs, configured public endpoint URLs,
+    and standard AWS bucket URL patterns.
+    """
+    if not url:
+        return None
+
+    clean_url = url.strip()
+    if not clean_url:
+        return None
+
+    parsed = urlparse(clean_url)
+    clean_without_query = f"{parsed.scheme}://{parsed.netloc}{parsed.path}" if parsed.scheme else clean_url.split("?", 1)[0]
+
+    base = settings.BACKEND_BASE_URL.rstrip("/")
+    local_prefix = f"{base}/static/uploads/"
+    if clean_without_query.startswith(local_prefix):
+        return clean_without_query.replace(local_prefix, "", 1)
+
+    if settings.S3_PUBLIC_URL:
+        public_prefix = settings.S3_PUBLIC_URL.rstrip("/") + "/"
+        if clean_without_query.startswith(public_prefix):
+            return clean_without_query.replace(public_prefix, "", 1)
+
+    if settings.S3_ENDPOINT and settings.S3_BUCKET:
+        endpoint_prefix = f"{settings.S3_ENDPOINT.rstrip('/')}/{settings.S3_BUCKET}/"
+        if clean_without_query.startswith(endpoint_prefix):
+            return clean_without_query.replace(endpoint_prefix, "", 1)
+
+    if settings.S3_BUCKET:
+        aws_pattern = rf"https?://{re.escape(settings.S3_BUCKET)}\.s3\.amazonaws\.com/(.+)"
+        aws_match = re.match(aws_pattern, clean_without_query)
+        if aws_match:
+            return aws_match.group(1)
+
+    return None
+
+
+def create_presigned_url(key: str, expires_seconds: int = 900) -> str:
+    """Create a temporary signed URL for the given storage key.
+
+    Falls back to local static URL if S3 credentials are not configured.
+    """
+    if not key:
+        raise ValueError("Storage key is required to create a signed URL")
+
+    if (
+        not settings.S3_ACCESS_KEY
+        or settings.S3_ACCESS_KEY == "your_b2_application_key_id"
+    ):
+        base = settings.BACKEND_BASE_URL.rstrip("/")
+        return f"{base}/static/uploads/{key}"
+
+    s3 = _get_s3_client()
+    return s3.generate_presigned_url(
+        ClientMethod="get_object",
+        Params={"Bucket": settings.S3_BUCKET, "Key": key},
+        ExpiresIn=expires_seconds,
+    )
+
+
+def to_asset_response_url(url: str) -> str:
+    """Return API response URL based on private URL rollout settings."""
+    if not settings.STORAGE_PRIVATE_URLS_ENABLED:
+        return url
+
+    key = extract_storage_key(url)
+    if not key:
+        logger.warning("Could not derive storage key for asset URL; returning original URL")
+        return url
+
+    ttl = max(int(settings.STORAGE_SIGNED_URL_TTL_SECONDS or 900), 60)
+    return create_presigned_url(key, expires_seconds=ttl)
 
 
 async def upload_image(
@@ -176,20 +259,8 @@ async def delete_image(url: str) -> bool:
             logger.warning(f"Failed to delete local file {local_path}: {e}")
             return False
 
-    # Extract S3 key from public URL
-    key = None
-    if settings.S3_PUBLIC_URL and url.startswith(settings.S3_PUBLIC_URL):
-        key = url.replace(settings.S3_PUBLIC_URL.rstrip("/") + "/", "", 1)
-    elif settings.S3_ENDPOINT and settings.S3_BUCKET:
-        prefix = f"{settings.S3_ENDPOINT.rstrip('/')}/{settings.S3_BUCKET}/"
-        if url.startswith(prefix):
-            key = url.replace(prefix, "", 1)
-    if not key and settings.S3_BUCKET:
-        # Try standard AWS URL pattern
-        pattern = rf"https?://{re.escape(settings.S3_BUCKET)}\.s3\.amazonaws\.com/(.+)"
-        m = re.match(pattern, url)
-        if m:
-            key = m.group(1)
+    # Extract storage key from URL
+    key = extract_storage_key(url)
 
     if not key:
         logger.warning(f"Could not extract S3 key from URL: {url}")

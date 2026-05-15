@@ -40,10 +40,17 @@ class Settings(BaseSettings):
     # Backend public base URL (used for local-storage fallback URLs)
     BACKEND_BASE_URL: str = "http://localhost:8000"
 
+    # Malware scanning rollout controls
+    MALWARE_SCANNING_ENABLED: bool = False
+    MALWARE_SCANNING_MODE: str = "log_only"
+
     # Storage paid upgrade
     STORAGE_WEBHOOK_SECRET: str = ""
     STORAGE_CHECKOUT_URL_BASE: str = ""
     STORAGE_ADDON_CATALOG_JSON: str = ""
+    STORAGE_PRIVATE_URLS_ENABLED: bool = False
+    STORAGE_SIGNED_URL_TTL_SECONDS: int = 900
+    TEMPLATE_THUMBNAILS_PUBLIC: bool = True
 
     # Credit pack payment
     CREDIT_CHECKOUT_URL_BASE: str = ""

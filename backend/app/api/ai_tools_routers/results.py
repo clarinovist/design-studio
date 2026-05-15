@@ -14,6 +14,7 @@ from app.api.deps import get_db
 from app.api.rate_limit import rate_limit_dependency, rate_limit_reads
 from app.models.user import User
 from app.models.ai_tool_result import AiToolResult
+from app.services.storage_service import to_asset_response_url
 
 router = APIRouter(tags=["AI Tools"])
 logger = logging.getLogger(__name__)
@@ -82,7 +83,7 @@ async def list_my_results(
         {
             "id": str(r.id),
             "tool_name": r.tool_name,
-            "result_url": r.result_url,
+            "result_url": to_asset_response_url(r.result_url) if r.result_url else None,
             "input_summary": r.input_summary,
             "file_size": r.file_size,
             "created_at": r.created_at.isoformat() if r.created_at else None,
