@@ -16,6 +16,7 @@ from app.services.llm_client import LLMRateLimitError
 from app.services.image_service import generate_background
 from app.services.llm_service import apply_copy_overrides, parse_design_text
 from app.services.preprocess import prepare_reference
+from app.services.provider_costs import estimate_ai_cost_usd, sum_actual_cost_usd
 from app.services.storage_service import download_image, upload_image
 from app.workers.ai_tool_jobs_common import run_async as _run_async
 from app.workers.celery_app import celery_app
@@ -203,6 +204,7 @@ async def _execute_pipeline(
 
         # Sequential multi-image generation
         generated_urls: list[str] = []
+        provider_results: list[dict] = []
         for var_idx in range(num_variations):
             try:
                 var_prompt = visual_prompt_final if var_idx == 0 else f"{visual_prompt_final} [variant seed {var_idx}]"
@@ -215,6 +217,8 @@ async def _execute_pipeline(
                     integrated_text=integrated_text,
                     seed=seed,
                 )
+                if isinstance(result, dict):
+                    provider_results.append(result)
                 gen_bytes = await download_image(result["image_url"])
                 permanent_url = await upload_image(
                     gen_bytes,
@@ -253,6 +257,7 @@ async def _execute_pipeline(
                 pass
 
         if generated_urls:
+            actual_cost = sum_actual_cost_usd(provider_results)
             # Patch variation_results with real URLs
             import json as _json
             try:
@@ -278,6 +283,15 @@ async def _execute_pipeline(
                 provider="fal.ai",
                 model="fal-ai",
                 credits_charged=charged_credits,
+                estimated_cost=estimate_ai_cost_usd(
+                    operation="generate_design",
+                    model="fal-ai",
+                    quality="auto",
+                ),
+                actual_cost=actual_cost,
+                metadata={
+                    "actual_cost_source": "provider" if actual_cost is not None else "missing_from_provider"
+                },
             )
         logger.info(f"Design generation completed successfully | Job: {job_id}")
 

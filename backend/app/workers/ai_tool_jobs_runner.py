@@ -7,6 +7,7 @@ from typing import Awaitable, Callable
 from app.core.database import AsyncSessionLocal
 from app.models.ai_tool_job import AiToolJob
 from app.services.ai_tool_job_service import fail_ai_tool_job
+from app.services.ai_usage_service import mark_ai_tool_usage_from_status
 from app.workers.ai_tool_jobs_background import (
     execute_background_swap_tool_job,
     execute_id_photo_tool_job,
@@ -40,6 +41,22 @@ AI_TOOL_EXECUTORS: dict[str, AiToolExecutor] = {
 }
 
 
+async def _sync_usage_for_completed_job(job_id: str) -> None:
+    """Backstop ledger sync for workers that set status directly without helper."""
+    async with AsyncSessionLocal() as session:
+        job = await session.get(AiToolJob, job_id)
+        if job is None or job.status != "completed":
+            return
+
+        await mark_ai_tool_usage_from_status(
+            session,
+            ai_tool_job_id=job_id,
+            status="completed",
+            metadata={"actual_cost_source": "missing_from_provider"},
+        )
+        await session.commit()
+
+
 async def run_ai_tool_job(job_id: str, current_retry: int = 0, max_retries: int = 0):
     async with AsyncSessionLocal() as session:
         job = await session.get(AiToolJob, job_id)
@@ -65,6 +82,7 @@ async def run_ai_tool_job(job_id: str, current_retry: int = 0, max_retries: int 
             logger.info(f"Starting AI tool job | Tool: {tool_name}", extra={"job_id": job_id})
 
         await executor(job_id)
+        await _sync_usage_for_completed_job(job_id)
         logger.info(f"AI tool job completed successfully | Tool: {tool_name}", extra={"job_id": job_id})
     except Exception as exc:
         is_final_attempt = current_retry >= max_retries

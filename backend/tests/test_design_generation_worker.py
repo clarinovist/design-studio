@@ -299,6 +299,58 @@ async def test_execute_pipeline_honors_manual_copy_overrides(
 
 
 @pytest.mark.asyncio
+@patch("app.workers.design_generation._mark_job_usage_best_effort", new_callable=AsyncMock)
+@patch("app.workers.design_generation._get_job_checkpoint", new_callable=AsyncMock)
+@patch("app.workers.design_generation._update_job_status", new_callable=AsyncMock)
+@patch("app.workers.design_generation.upload_image", new_callable=AsyncMock)
+@patch("app.workers.design_generation.download_image", new_callable=AsyncMock)
+@patch("app.workers.design_generation.generate_background", new_callable=AsyncMock)
+@patch("app.services.quantum_service.optimize_quantum_layout", new_callable=AsyncMock)
+@patch("app.workers.design_generation.parse_design_text", new_callable=AsyncMock)
+async def test_execute_pipeline_passes_actual_cost_to_usage_update(
+    mock_parse_design_text,
+    mock_optimize_quantum_layout,
+    mock_generate_background,
+    mock_download_image,
+    mock_upload_image,
+    mock_update_job_status,
+    mock_get_job_checkpoint,
+    mock_mark_job_usage,
+):
+    mock_get_job_checkpoint.return_value = {}
+    mock_parse_design_text.return_value = SimpleNamespace(
+        headline="Headline",
+        sub_headline="Sub",
+        cta="CTA",
+        visual_prompt="prompt final",
+        visual_prompt_parts=None,
+    )
+    mock_optimize_quantum_layout.return_value = None
+    mock_generate_background.return_value = {
+        "image_url": "https://cdn.example.com/generated.jpg",
+        "content_type": "image/jpeg",
+        "actual_cost": "0.012345",
+    }
+    mock_download_image.return_value = b"abc123"
+    mock_upload_image.return_value = "https://cdn.example.com/permanent.jpg"
+
+    await _execute_pipeline(
+        job_id="job-cost",
+        raw_text="Buat desain",
+        aspect_ratio="1:1",
+        style="auto",
+        reference_url=None,
+        integrated_text=False,
+        num_variations=1,
+    )
+
+    usage_kwargs = mock_mark_job_usage.await_args.kwargs
+    assert usage_kwargs["status"] == "succeeded"
+    assert str(usage_kwargs["actual_cost"]) == "0.012345"
+    assert usage_kwargs["metadata"]["actual_cost_source"] == "provider"
+
+
+@pytest.mark.asyncio
 @patch("app.api.designs_routers.generation.httpx.AsyncClient")
 @patch("app.services.credit_service.log_credit_change", new_callable=AsyncMock)
 @patch("app.services.storage_service.upload_image_tracked", new_callable=AsyncMock)

@@ -40,6 +40,12 @@ def run_async(coro):
 
 
 async def update_ai_tool_job(job_id: str, **fields):
+    from app.services.provider_costs import extract_actual_cost_usd
+
+    provider_result = fields.pop("provider_result", None)
+    actual_cost = extract_actual_cost_usd(provider_result)
+    actual_cost_source = "provider" if actual_cost is not None else "missing_from_provider"
+
     async with AsyncSessionLocal() as session:
         await session.execute(
             update(AiToolJob).where(AiToolJob.id == job_id).values(**fields)
@@ -53,6 +59,8 @@ async def update_ai_tool_job(job_id: str, **fields):
                 ai_tool_job_id=job_id,
                 status=status,
                 error_message=fields.get("error_message"),
+                actual_cost=actual_cost,
+                metadata={"actual_cost_source": actual_cost_source},
             )
         await session.commit()
 

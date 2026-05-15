@@ -29,6 +29,7 @@ from app.services.ai_usage_service import (
     record_ai_usage_charge,
     update_usage_for_job,
 )
+from app.services.provider_costs import estimate_ai_cost_usd
 from app.services.storage_service import download_image
 from app.services.subject_classifier_service import (
     build_product_scene_policy_result,
@@ -232,6 +233,12 @@ async def create_tool_job(
                 provider="fal.ai",
                 model="gpt-image-2" if request.quality == "ultra" else None,
                 quality=request.quality,
+                estimated_cost=estimate_ai_cost_usd(
+                    operation=request.tool_name if request.tool_name != "batch" else f"batch:{operation or 'unknown'}",
+                    model="gpt-image-2" if request.quality == "ultra" else "fal-ai",
+                    quality=request.quality,
+                    count=file_count if request.tool_name == "batch" else 1,
+                ),
                 metadata={
                     "tool_name": request.tool_name,
                     "idempotency_key": request.idempotency_key,

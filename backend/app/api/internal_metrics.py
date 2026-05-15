@@ -278,9 +278,9 @@ async def _count_active_users_in_window(
 
 
 async def _get_cohort_d1_d7_retention(db: AsyncSession) -> dict:
-    """Calculate D1 and D7 retention based on signup cohorts.
+    """Calculate D1 point retention and D7/D30 cumulative active-by-day metrics.
 
-    Returns dict with cohort dates and their D0/D1/D7 retention metrics.
+    Returns dict with cohort dates and their D0/D1 plus cumulative D7/D30 metrics.
     """
     # Get users who signed up and their first action day
     cohort_query = select(
@@ -300,6 +300,8 @@ async def _get_cohort_d1_d7_retention(db: AsyncSession) -> dict:
         d1_end = d1_start + timedelta(days=1)
         d7_start = cohort_start + timedelta(days=7)
         d7_end = d7_start + timedelta(days=1)
+        d30_start = cohort_start + timedelta(days=30)
+        d30_end = d30_start + timedelta(days=1)
 
         cohort_users_result = await db.execute(
             select(User.id).where(
@@ -311,13 +313,16 @@ async def _get_cohort_d1_d7_retention(db: AsyncSession) -> dict:
 
         d1_users = await _count_active_users_in_window(db, cohort_user_ids, d1_start, d1_end)
         d7_users = await _count_active_users_in_window(db, cohort_user_ids, cohort_start, d7_end)
+        d30_users = await _count_active_users_in_window(db, cohort_user_ids, cohort_start, d30_end)
 
         cohort_data[cohort_day.isoformat()] = {
             "d0_users": d0_users,
             "d1_users": d1_users,
             "d7_users": d7_users,
+            "d30_users": d30_users,
             "d1_retention_percent": _safe_rate(d1_users, d0_users),
             "d7_retention_percent": _safe_rate(d7_users, d0_users),
+            "d30_retention_percent": _safe_rate(d30_users, d0_users),
         }
 
     return cohort_data

@@ -64,6 +64,15 @@ interface WeeklyBetaReview {
     paying_users_30d: number;
     ai_cost_per_paying_user: number;
   };
+  retention?: Record<string, {
+    d0_users: number;
+    d1_users: number;
+    d7_users: number;
+    d30_users: number;
+    d1_retention_percent: number;
+    d7_retention_percent: number;
+    d30_retention_percent: number;
+  }>;
 }
 
 interface OperatorSummary {
@@ -252,6 +261,15 @@ export default function OperatorDashboardPage() {
     });
   }, [summary?.generated_at]);
 
+  const latestRetention = useMemo(() => {
+    const entries = Object.entries(summary?.weekly_beta_review.retention ?? {});
+    if (entries.length === 0) {
+      return null;
+    }
+    const [cohortDate, value] = entries[0];
+    return { cohortDate, ...value };
+  }, [summary?.weekly_beta_review.retention]);
+
   return (
     <div className="min-h-screen bg-background/50">
       <AppHeader />
@@ -416,6 +434,43 @@ export default function OperatorDashboardPage() {
                   </tbody>
                 </table>
               </div>
+            </section>
+
+            <section className="rounded-lg border bg-card p-5">
+              <h2 className="text-sm font-semibold">Cohort Retention</h2>
+              <p className="mt-1 text-xs text-muted-foreground">D1 exact-day, D7/D30 cumulative active by day cutoff untuk cohort signup terbaru.</p>
+              {!latestRetention ? (
+                <p className="mt-4 text-sm text-muted-foreground">Belum ada data retention.</p>
+              ) : (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs text-muted-foreground">
+                        <th className="pb-2 pr-4 font-medium">Cohort</th>
+                        <th className="pb-2 pr-4 font-medium">D0</th>
+                        <th className="pb-2 pr-4 font-medium">D1</th>
+                        <th className="pb-2 pr-4 font-medium">D7</th>
+                        <th className="pb-2 pr-4 font-medium">D30</th>
+                        <th className="pb-2 pr-4 font-medium">D1 %</th>
+                        <th className="pb-2 pr-4 font-medium">D7 % (cum.)</th>
+                        <th className="pb-2 font-medium">D30 % (cum.)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-3 pr-4 font-medium">{latestRetention.cohortDate}</td>
+                        <td className="py-3 pr-4 text-muted-foreground">{formatNumber(latestRetention.d0_users)}</td>
+                        <td className="py-3 pr-4 text-muted-foreground">{formatNumber(latestRetention.d1_users)}</td>
+                        <td className="py-3 pr-4 text-muted-foreground">{formatNumber(latestRetention.d7_users)}</td>
+                        <td className="py-3 pr-4 text-muted-foreground">{formatNumber(latestRetention.d30_users)}</td>
+                        <td className="py-3 pr-4 text-muted-foreground">{formatRate(latestRetention.d1_retention_percent)}</td>
+                        <td className="py-3 pr-4 text-muted-foreground">{formatRate(latestRetention.d7_retention_percent)}</td>
+                        <td className="py-3 text-muted-foreground">{formatRate(latestRetention.d30_retention_percent)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
 
             <section className="rounded-lg border bg-card p-5">

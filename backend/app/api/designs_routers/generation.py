@@ -281,8 +281,14 @@ async def generate_design(
     await db.flush()
 
     from app.services.ai_usage_service import record_ai_usage_charge, update_usage_for_job
+    from app.services.provider_costs import estimate_ai_cost_usd
 
     requested_quality_for_ledger = (getattr(request, "quality", "auto") or "auto").lower()
+    estimated_cost = estimate_ai_cost_usd(
+        operation="generate_design",
+        model="fal-ai",
+        quality=requested_quality_for_ledger,
+    )
     await record_ai_usage_charge(
         db,
         user_id=current_user.id,
@@ -293,6 +299,7 @@ async def generate_design(
         credit_transaction_id=credit_tx.id if credit_tx else None,
         provider="fal.ai",
         quality=requested_quality_for_ledger,
+        estimated_cost=estimated_cost,
         metadata={
             "aspect_ratio": str(request.aspect_ratio),
             "has_reference_image": bool(effective_reference_image_url),
@@ -594,6 +601,11 @@ async def generate_design(
                 credits_charged=total_charged,
                 quality=selected_model_tier,
                 model="gpt-image-2",
+                estimated_cost=estimate_ai_cost_usd(
+                    operation="generate_design",
+                    model="gpt-image-2",
+                    quality=selected_model_tier,
+                ),
                 metadata={"ultra_surcharge_transaction_id": str(ultra_tx.id) if ultra_tx else None},
             )
             fal_result = await generate_background_ultra(
@@ -635,6 +647,7 @@ async def generate_design(
 
         # --- Sequential multi-image generation ---
         generated_urls: list[str] = []
+        provider_results: list[dict] = [fal_result] if isinstance(fal_result, dict) else []
         for var_idx in range(num_variations):
             try:
                 # Slight prompt perturbation to get visual diversity
@@ -660,6 +673,9 @@ async def generate_design(
                         preserve_product=bool(getattr(request, "remove_product_bg", False)),
                         seed=getattr(request, "seed", None),
                     )
+
+                if isinstance(var_fal, dict):
+                    provider_results.append(var_fal)
 
                 async with httpx.AsyncClient() as http_client:
                     img_resp = await http_client.get(var_fal["image_url"], timeout=30.0)
@@ -739,6 +755,10 @@ async def generate_design(
             job.file_size = len(image_bytes)
             job.status = "completed"
             job.completed_at = datetime.now(timezone.utc)
+            from app.services.provider_costs import sum_actual_cost_usd
+
+            actual_cost = sum_actual_cost_usd(provider_results)
+            actual_cost_source = "provider" if actual_cost is not None else "missing_from_provider"
             await update_usage_for_job(
                 db,
                 job_id=job.id,
@@ -747,6 +767,8 @@ async def generate_design(
                 model=model_name,
                 quality=selected_model_tier,
                 credits_charged=total_charged,
+                actual_cost=actual_cost,
+                metadata={"actual_cost_source": actual_cost_source},
             )
         else:
             job.status = "failed"
@@ -870,7 +892,13 @@ async def redesign_image(
     db.add(job)
     await db.flush()
     from app.services.ai_usage_service import record_ai_usage_charge, update_usage_for_job
+    from app.services.provider_costs import estimate_ai_cost_usd, extract_actual_cost_usd
 
+    estimated_cost = estimate_ai_cost_usd(
+        operation="redesign",
+        model="gpt-image-2" if selected_model_tier == "ultra" else "fal-ai",
+        quality=selected_model_tier,
+    )
     await record_ai_usage_charge(
         db,
         user_id=current_user.id,
@@ -882,6 +910,7 @@ async def redesign_image(
         provider="fal.ai",
         model="gpt-image-2" if selected_model_tier == "ultra" else "flux",
         quality=selected_model_tier,
+        estimated_cost=estimated_cost,
         metadata={
             "aspect_ratio": str(request.aspect_ratio),
             "preserve_product": bool(request.preserve_product),
@@ -980,6 +1009,8 @@ async def redesign_image(
         job.file_size = len(image_bytes)
         job.status = "completed"
         job.completed_at = datetime.now(timezone.utc)
+        actual_cost = extract_actual_cost_usd(ultra_result) if selected_model_tier == "ultra" else None
+        actual_cost_source = "provider" if actual_cost is not None else "missing_from_provider"
         await update_usage_for_job(
             db,
             job_id=job.id,
@@ -988,6 +1019,8 @@ async def redesign_image(
             model="gpt-image-2" if selected_model_tier == "ultra" else "flux",
             quality=selected_model_tier,
             credits_charged=credit_cost,
+            actual_cost=actual_cost,
+            metadata={"actual_cost_source": actual_cost_source},
         )
         await db.commit()
         await db.refresh(job)

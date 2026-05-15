@@ -161,12 +161,19 @@ async def mark_ai_tool_usage_from_status(
     ai_tool_job_id: UUID | str,
     status: str,
     error_message: str | None = None,
+    actual_cost: Decimal | float | int | str | None = None,
+    estimated_cost: Decimal | float | int | str | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> AiUsageEvent | None:
     if status == "completed":
+        completion_metadata = metadata or {"actual_cost_source": "missing_from_provider"}
         return await update_usage_for_job(
             db,
             ai_tool_job_id=ai_tool_job_id,
             status="succeeded",
+            actual_cost=actual_cost,
+            estimated_cost=estimated_cost,
+            metadata=completion_metadata,
         )
     if status == "failed":
         return await update_usage_for_job(

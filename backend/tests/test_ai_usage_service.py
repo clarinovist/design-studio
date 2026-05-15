@@ -1,11 +1,16 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+from unittest.mock import patch
 
 import pytest
 
 from app.models.ai_usage_event import AiUsageEvent
-from app.services.ai_usage_service import record_ai_usage_charge, update_ai_usage_event
+from app.services.ai_usage_service import (
+    mark_ai_tool_usage_from_status,
+    record_ai_usage_charge,
+    update_ai_usage_event,
+)
 
 
 @pytest.fixture
@@ -85,3 +90,36 @@ async def test_update_ai_usage_event_marks_terminal_status(mock_db):
     assert event.event_metadata == {"retryable": False}
     mock_db.add.assert_called_once_with(event)
     mock_db.flush.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_mark_ai_tool_usage_from_completed_sets_missing_source_by_default() -> None:
+    db = MagicMock()
+    with patch("app.services.ai_usage_service.update_usage_for_job", new_callable=AsyncMock) as update_usage:
+        await mark_ai_tool_usage_from_status(
+            db,
+            ai_tool_job_id=uuid4(),
+            status="completed",
+        )
+
+    kwargs = update_usage.await_args.kwargs
+    assert kwargs["status"] == "succeeded"
+    assert kwargs["metadata"] == {"actual_cost_source": "missing_from_provider"}
+
+
+@pytest.mark.asyncio
+async def test_mark_ai_tool_usage_from_completed_keeps_provider_source_metadata() -> None:
+    db = MagicMock()
+    with patch("app.services.ai_usage_service.update_usage_for_job", new_callable=AsyncMock) as update_usage:
+        await mark_ai_tool_usage_from_status(
+            db,
+            ai_tool_job_id=uuid4(),
+            status="completed",
+            actual_cost="0.021500",
+            metadata={"actual_cost_source": "provider"},
+        )
+
+    kwargs = update_usage.await_args.kwargs
+    assert kwargs["status"] == "succeeded"
+    assert kwargs["actual_cost"] == "0.021500"
+    assert kwargs["metadata"] == {"actual_cost_source": "provider"}

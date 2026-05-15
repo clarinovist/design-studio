@@ -1,6 +1,6 @@
 # Upload Security Audit
 
-Last audited: 2026-05-12
+Last audited: 2026-05-15
 
 This audit covers backend endpoints that accept `UploadFile`. The goal is paid-beta readiness: uploaded product photos, brand assets, masks, and guidelines must have size/type validation and authenticated rate limiting before they can consume storage or provider calls.
 
@@ -25,6 +25,7 @@ This audit covers backend endpoints that accept `UploadFile`. The goal is paid-b
 ## Beta Notes
 
 - Image magic-byte, Pillow verification, max-size checks, and storage-quota checks are centralized in `backend/app/services/file_validation.py`.
+- `POST /api/designs/upload` sekarang memakai dependency action limiter (`rate_limit_dependency`) yang sama dengan endpoint upload AI tools lainnya.
 - Endpoints that persist user-visible generated or uploaded assets should use `upload_image_tracked` when the bytes should count against quota. Some AI tool endpoints upload generated results through the lower-level storage helper today; this is acceptable for beta because user-supplied inputs are validated before provider calls, but quota accounting for generated AI tool results should be revisited before wider scale.
 - Malware scanning, private signed URLs, and automated temporary-file retention remain post-beta hardening items unless traffic or customer requirements justify pulling them forward.
 - Phase-5 policy decision for controlled beta is documented in `docs/launch/2026-05-15-phase-5-asset-policy.md` (public URL temporarily accepted, signed/private URL required before open beta).

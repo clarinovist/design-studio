@@ -27,6 +27,9 @@ async def test_get_cohort_d1_d7_retention_counts_export_generation_and_usage() -
         result([(user_1,)]),
         result([(user_2,)]),
         result([]),
+        result([(user_1,)]),
+        result([(user_2,)]),
+        result([]),
     ]
 
     retention = await _get_cohort_d1_d7_retention(db)
@@ -36,6 +39,8 @@ async def test_get_cohort_d1_d7_retention_counts_export_generation_and_usage() -
     assert retention["2026-05-12"]["d7_users"] == 2
     assert retention["2026-05-12"]["d1_retention_percent"] == 100.0
     assert retention["2026-05-12"]["d7_retention_percent"] == 100.0
+    assert retention["2026-05-12"]["d30_users"] == 2
+    assert retention["2026-05-12"]["d30_retention_percent"] == 100.0
 
 
 @pytest.mark.asyncio
@@ -85,8 +90,10 @@ async def test_weekly_beta_review_uses_backend_export_events_and_repeat_purchase
                 "d0_users": 2,
                 "d1_users": 1,
                 "d7_users": 2,
+                "d30_users": 2,
                 "d1_retention_percent": 50.0,
                 "d7_retention_percent": 100.0,
+                "d30_retention_percent": 100.0,
             }
         }
 

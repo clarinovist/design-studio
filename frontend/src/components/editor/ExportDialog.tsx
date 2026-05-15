@@ -103,6 +103,30 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ open, onOpenChange, 
                 document.body.removeChild(link);
             }
 
+            // Fire-and-forget backend export event for operator funnel metrics.
+            if (projectId) {
+                const exportFormat = format === "jpeg" ? "jpg" : format;
+                fetch(`${API_BASE_URL}/designs/${projectId}/export-event`, {
+                    method: "POST",
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        export_format: exportFormat,
+                        job_id: null,
+                        target_platform: null,
+                        source: "editor",
+                    }),
+                }).then((response) => {
+                    if (!response.ok) {
+                        console.warn("Export event logging failed", {
+                            status: response.status,
+                            statusText: response.statusText,
+                        });
+                    }
+                }).catch((eventErr) => {
+                    console.warn("Export event logging failed", eventErr);
+                });
+            }
+
             setExportCompleted(true);
             if (localStorage.getItem("smartdesign_first_export_v1") !== "1") {
                 trackEvent(posthog, "first_export", {

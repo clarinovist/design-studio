@@ -12,6 +12,7 @@ Target metrik weekly review:
 - first design to export
 - export to payment
 - payment to repeat use
+- cohort retention D1/D7/D30
 - AI cost per paying user
 
 ## Data Sources
@@ -34,6 +35,16 @@ Target metrik weekly review:
 - AI actual cost 7D
 - Paying users 30D
 - AI cost per paying user
+
+3. Retention card:
+- Cohort D1 retention (exact next-day activity)
+- Cohort D7 active by day 7 (cumulative)
+- Cohort D30 active by day 30 (cumulative)
+
+Catatan biaya:
+1. `actual_cost` hanya dihitung dari nilai yang benar-benar dikembalikan provider.
+2. Jika provider tidak mengembalikan biaya aktual, gunakan `estimated_cost` untuk monitoring margin (bukan source of truth billing).
+3. `estimated_cost` saat ini berasal dari heuristic table (`provider_costs.py`) dan perlu dikalibrasi berkala terhadap invoice provider.
 
 3. QA notes card:
 - Export di backend sekarang dibaca dari `design_exports`.
@@ -99,11 +110,11 @@ generated_users AS (
     AND a.status IN ('charged', 'succeeded', 'completed', 'refunded')
 ),
 exported_users AS (
-  SELECT DISTINCT f.user_id
-  FROM design_feedback f
-  JOIN signup_users su ON su.id = f.user_id
-  WHERE f.created_at >= now() - interval '7 days'
-    AND f.source = 'export'
+  SELECT DISTINCT e.user_id
+  FROM design_exports e
+  JOIN signup_users su ON su.id = e.user_id
+  WHERE e.created_at >= now() - interval '7 days'
+    AND e.success = true
 ),
 paying_users_30d AS (
   SELECT DISTINCT sp.user_id
