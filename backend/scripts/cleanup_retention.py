@@ -125,6 +125,7 @@ async def run_cleanup(
     old_terminal_job_days: int,
     orphan_result_days: int,
     include_generated: bool,
+    include_completed_jobs: bool,
 ) -> int:
     summary = CleanupSummary()
 
@@ -140,11 +141,13 @@ async def run_cleanup(
         )
         stale_failed_jobs = (await session.execute(stale_failed_query)).scalars().all()
 
-        old_terminal_query = select(AiToolJob).where(
-            AiToolJob.created_at < old_terminal_cutoff,
-            AiToolJob.status.in_(["completed"]),
-        )
-        old_terminal_jobs = (await session.execute(old_terminal_query)).scalars().all()
+        old_terminal_jobs: list[AiToolJob] = []
+        if include_completed_jobs:
+            old_terminal_query = select(AiToolJob).where(
+                AiToolJob.created_at < old_terminal_cutoff,
+                AiToolJob.status.in_(["completed"]),
+            )
+            old_terminal_jobs = (await session.execute(old_terminal_query)).scalars().all()
 
         orphaned_results_query = (
             select(AiToolResult)
@@ -182,7 +185,11 @@ async def run_cleanup(
         logger.info("=" * 72)
         logger.info("Retention cleanup mode: %s", "EXECUTE" if execute else "DRY-RUN")
         logger.info("- stale failed/cancelled ai_tool_jobs: %s", summary.stale_failed_jobs)
-        logger.info("- old completed ai_tool_jobs: %s", summary.old_terminal_jobs)
+        logger.info(
+            "- old completed ai_tool_jobs: %s (enabled=%s)",
+            summary.old_terminal_jobs,
+            include_completed_jobs,
+        )
         logger.info("- orphaned ai_tool_results: %s", summary.orphaned_results)
         logger.info("- asset delete candidates: %s", summary.asset_candidates)
 
@@ -250,7 +257,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--old-terminal-job-days",
         type=int,
         default=DEFAULT_OLD_TERMINAL_JOB_DAYS,
-        help=f"Delete completed ai_tool_jobs older than this many days (default: {DEFAULT_OLD_TERMINAL_JOB_DAYS}).",
+        help=f"Age threshold for completed ai_tool_jobs when --include-completed-jobs is set (default: {DEFAULT_OLD_TERMINAL_JOB_DAYS}).",
+    )
+    parser.add_argument(
+        "--include-completed-jobs",
+        action="store_true",
+        help="Include completed ai_tool_jobs in cleanup candidates (disabled by default).",
     )
     parser.add_argument(
         "--orphan-result-days",
@@ -287,6 +299,7 @@ def main() -> int:
             old_terminal_job_days=args.old_terminal_job_days,
             orphan_result_days=args.orphan_result_days,
             include_generated=args.include_generated_prefix,
+            include_completed_jobs=args.include_completed_jobs,
         )
     )
 
