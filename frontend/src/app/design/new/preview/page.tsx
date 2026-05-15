@@ -110,7 +110,7 @@ export default function DesignPreviewPage() {
     }, [generating]);
 
     const draftPrompt = useMemo(() => (brief ? buildPrompt(brief) : ""), [brief]);
-    const aspectRatio = brief ? (ASPECT_RATIO_MAP[brief.channel] ?? "1:1") : "1:1";
+    const aspectRatio = brief ? (brief.aspectRatio ?? ASPECT_RATIO_MAP[brief.channel] ?? "1:1") : "1:1";
     const mappingPageUpperBound = brief?.catalogTotalPages || 0;
     const hasInvalidMapping = useMemo(() => {
         if (!catalogEditableMappings?.length) return false;
@@ -399,6 +399,7 @@ export default function DesignPreviewPage() {
             const jobData = await generateDesign({
                 raw_text: draftPrompt,
                 aspect_ratio: aspectRatio,
+                template_id: brief.selectedTemplateId,
                 reference_image_url: brief.productImageUrl,
                 reference_focus: referenceFocus,
                 product_image_url: brief.productImageUrl,

@@ -386,6 +386,7 @@ async def generate_design(
                 raw_text=request.raw_text,
                 aspect_ratio=request.aspect_ratio,
                 style=request.style_preference,
+                template_id=request.template_id,
                 reference_url=effective_reference_image_url,
                 reference_focus=reference_focus,
                 integrated_text=request.integrated_text,
@@ -464,6 +465,21 @@ async def generate_design(
             visual_prompt_final = assembled if assembled else parsed.visual_prompt
         else:
             visual_prompt_final = parsed.visual_prompt
+
+        # Apply template prompt suffix if a template was selected
+        if request.template_id:
+            try:
+                from app.models.template import Template
+                from sqlalchemy.future import select
+                import uuid
+                t_uuid = uuid.UUID(request.template_id)
+                t_res = await db.execute(select(Template).where(Template.id == t_uuid))
+                template_obj = t_res.scalar_one_or_none()
+                if template_obj and template_obj.prompt_suffix:
+                    visual_prompt_final = f"{visual_prompt_final}, {template_obj.prompt_suffix}"
+            except Exception as e:
+                import logging
+                logging.warning(f"Failed to load template {request.template_id}: {e}")
 
         # Update job with parsed data
         job.parsed_headline = parsed.headline

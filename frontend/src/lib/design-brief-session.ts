@@ -48,8 +48,10 @@ export interface DesignBriefSessionState {
     productImageUrl?: string;
     productImageFilename?: string;
     referenceFocus?: "auto" | "human" | "object";
+    aspectRatio?: string;
     sellerChannel?: "shopee" | "tokopedia" | "instagram" | "instagram_story" | "whatsapp" | "general";
     promoType?: "new_product" | "flash_sale" | "discount" | "hampers" | "bundle" | "routine";
+    selectedTemplateId?: string;
     catalogType?: "product" | "service";
     catalogTotalPages?: number;
     catalogSuggestedStructure?: CatalogPagePlanState[];

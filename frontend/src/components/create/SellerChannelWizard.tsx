@@ -6,6 +6,7 @@ import { usePostHog } from "posthog-js/react";
 import { ArrowLeft, ArrowRight, ShoppingBag, Instagram, MessageCircle, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DESIGN_BRIEF_SESSION_KEY } from "@/lib/design-brief-session";
+import { TemplateBrowser, TemplateData } from "@/components/templates/TemplateBrowser";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -31,11 +32,12 @@ export type PromoType =
 // Config maps
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CHANNEL_CONFIG: Record<SellerChannel, { label: string; description: string; aspectRatio: string; briefChannel: string; style: string }> = {
+const CHANNEL_CONFIG: Record<SellerChannel, { label: string; description: string; aspectRatio: string; templateAspectRatio: string; briefChannel: string; style: string }> = {
     shopee: {
         label: "Shopee",
         description: "Foto produk & banner flash sale",
         aspectRatio: "1:1-shopee",
+        templateAspectRatio: "1:1",
         briefChannel: "marketplace",
         style: "Bold marketplace",
     },
@@ -43,6 +45,7 @@ const CHANNEL_CONFIG: Record<SellerChannel, { label: string; description: string
         label: "Tokopedia",
         description: "Thumbnail & promo produk unggulan",
         aspectRatio: "1:1-tokped",
+        templateAspectRatio: "1:1",
         briefChannel: "marketplace",
         style: "Bold marketplace",
     },
@@ -50,6 +53,7 @@ const CHANNEL_CONFIG: Record<SellerChannel, { label: string; description: string
         label: "Instagram Feed",
         description: "Post 4:5 untuk feed Instagram",
         aspectRatio: "4:5",
+        templateAspectRatio: "4:5",
         briefChannel: "instagram",
         style: "Minimal clean",
     },
@@ -57,6 +61,7 @@ const CHANNEL_CONFIG: Record<SellerChannel, { label: string; description: string
         label: "Instagram Story",
         description: "Story & Reels 9:16",
         aspectRatio: "9:16",
+        templateAspectRatio: "9:16",
         briefChannel: "instagram",
         style: "Minimal clean",
     },
@@ -64,6 +69,7 @@ const CHANNEL_CONFIG: Record<SellerChannel, { label: string; description: string
         label: "WhatsApp Broadcast",
         description: "Gambar promo untuk status & blast",
         aspectRatio: "9:16",
+        templateAspectRatio: "9:16",
         briefChannel: "ads",
         style: "Bold marketplace",
     },
@@ -71,6 +77,7 @@ const CHANNEL_CONFIG: Record<SellerChannel, { label: string; description: string
         label: "Semua / Lainnya",
         description: "Format fleksibel sesuai kebutuhan",
         aspectRatio: "1:1",
+        templateAspectRatio: "1:1",
         briefChannel: "marketplace",
         style: "Professional tech",
     },
@@ -138,8 +145,9 @@ export function SellerChannelWizard() {
     const router = useRouter();
     const posthog = usePostHog();
 
-    const [step, setStep] = useState<1 | 2>(1);
+    const [step, setStep] = useState<1 | 2 | 3>(1);
     const [selectedChannel, setSelectedChannel] = useState<SellerChannel | null>(null);
+    const [selectedPromo, setSelectedPromo] = useState<PromoType | null>(null);
 
     const handleChannelSelect = (channel: SellerChannel) => {
         setSelectedChannel(channel);
@@ -150,13 +158,28 @@ export function SellerChannelWizard() {
     const handlePromoSelect = (promoType: PromoType) => {
         if (!selectedChannel) return;
 
+        setSelectedPromo(promoType);
         const channelCfg = CHANNEL_CONFIG[selectedChannel];
-        const promoCfg = PROMO_CONFIG[promoType];
 
         posthog?.capture("seller_wizard_promo_selected", {
             channel: selectedChannel,
             promo_type: promoType,
             aspect_ratio: channelCfg.aspectRatio,
+        });
+
+        setStep(3);
+    };
+
+    const handleTemplateSelect = (template: TemplateData) => {
+        if (!selectedChannel || !selectedPromo) return;
+
+        const channelCfg = CHANNEL_CONFIG[selectedChannel];
+        const promoCfg = PROMO_CONFIG[selectedPromo];
+
+        posthog?.capture("seller_wizard_template_selected", {
+            channel: selectedChannel,
+            promo_type: selectedPromo,
+            template_id: template.id,
         });
 
         // Pre-fill the design brief session so the preview page can use it
@@ -170,15 +193,47 @@ export function SellerChannelWizard() {
             useAiCopyAssist: true,
             aspectRatio: channelCfg.aspectRatio,
             sellerChannel: selectedChannel,
-            promoType,
+            promoType: selectedPromo,
+            selectedTemplateId: template.id,
             updatedAt: new Date().toISOString(),
         };
 
         window.sessionStorage.setItem(DESIGN_BRIEF_SESSION_KEY, JSON.stringify(prefilledBrief));
 
         // Go to the interview form so the user can review / refine before generating
-        router.push(`/design/new/interview?from=seller&channel=${selectedChannel}&promo=${promoType}`);
+        router.push(`/design/new/interview?from=seller&channel=${selectedChannel}&promo=${selectedPromo}`);
     };
+
+    const handleSkipTemplate = () => {
+        if (!selectedChannel || !selectedPromo) return;
+
+        const channelCfg = CHANNEL_CONFIG[selectedChannel];
+        const promoCfg = PROMO_CONFIG[selectedPromo];
+
+        posthog?.capture("seller_wizard_template_skipped", {
+            channel: selectedChannel,
+            promo_type: selectedPromo,
+        });
+
+        const prefilledBrief = {
+            goal: promoCfg.goal,
+            productType: "Produk",
+            style: channelCfg.style,
+            channel: channelCfg.briefChannel,
+            copyTone: "Persuasif",
+            notes: promoCfg.notesTemplate,
+            useAiCopyAssist: true,
+            aspectRatio: channelCfg.aspectRatio,
+            sellerChannel: selectedChannel,
+            promoType: selectedPromo,
+            updatedAt: new Date().toISOString(),
+        };
+
+        window.sessionStorage.setItem(DESIGN_BRIEF_SESSION_KEY, JSON.stringify(prefilledBrief));
+
+        router.push(`/design/new/interview?from=seller&channel=${selectedChannel}&promo=${selectedPromo}`);
+    };
+
 
     const channels: SellerChannel[] = ["shopee", "tokopedia", "instagram", "instagram_story", "whatsapp", "general"];
     const promoTypes: PromoType[] = ["new_product", "flash_sale", "discount", "hampers", "bundle", "routine"];
@@ -187,9 +242,11 @@ export function SellerChannelWizard() {
         <div className="w-full max-w-2xl mx-auto space-y-6 animation-fade-in">
             {/* Step indicator */}
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className={`font-semibold ${step === 1 ? "text-primary" : ""}`}>1. Pilih Platform</span>
+                <span className={`font-semibold ${step === 1 ? "text-primary" : ""}`}>1. Platform</span>
                 <ArrowRight className="w-3 h-3" />
-                <span className={`font-semibold ${step === 2 ? "text-primary" : ""}`}>2. Jenis Promosi</span>
+                <span className={`font-semibold ${step === 2 ? "text-primary" : ""}`}>2. Promosi</span>
+                <ArrowRight className="w-3 h-3" />
+                <span className={`font-semibold ${step === 3 ? "text-primary" : ""}`}>3. Template</span>
             </div>
 
             {/* Step 1 — Channel */}
@@ -254,6 +311,49 @@ export function SellerChannelWizard() {
                                 </Button>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Step 3 — Template */}
+            {step === 3 && selectedChannel && selectedPromo && (
+                <div className="space-y-4">
+                    <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={() => setStep(2)}
+                    >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        Kembali
+                    </button>
+                    <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <ChannelIcon channel={selectedChannel} />
+                        </div>
+                        <span className="font-semibold text-foreground">
+                            {CHANNEL_CONFIG[selectedChannel].label} • {PROMO_CONFIG[selectedPromo].label}
+                        </span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-foreground">Pilih Template</h2>
+                            <p className="text-muted-foreground text-sm">Pilih preset desain awal. AI akan menyesuaikannya dengan brief Anda nanti.</p>
+                        </div>
+                        <Button 
+                            variant="outline" 
+                            onClick={handleSkipTemplate}
+                            className="shrink-0"
+                        >
+                            Lanjut Tanpa Template
+                        </Button>
+                    </div>
+                    
+                    <div className="pt-2 border-t border-border">
+                        <TemplateBrowser
+                            onSelectTemplate={handleTemplateSelect}
+                            aspectRatio={CHANNEL_CONFIG[selectedChannel].templateAspectRatio}
+                            platform={selectedChannel === "general" ? undefined : selectedChannel}
+                        />
                     </div>
                 </div>
             )}

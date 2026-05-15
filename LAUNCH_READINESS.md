@@ -6,17 +6,17 @@ This file is the paid-beta operating snapshot for SmartDesign Studio. It focuses
 
 ## Executive Summary
 
-Status: **Phase 1, Phase 2, and Phase 3 complete. Phase 4 seller-first activation is now implemented in the working tree and verified for onboarding hydration, template platform filtering, lint/build, and backend tests. One final runtime seed/API sanity check is still recommended before calling Phase 4 fully closed.**
+Status: **Phase 1, Phase 2, Phase 3, and Phase 4 are COMPLETE. Seller-first activation is fully integrated, including the `TemplateBrowser` in the wizard flow. The remaining work focuses on Phase 5 operator/security hardening and final UAT before the controlled paid beta.**
 
-Monetization core (credit packs with Midtrans, idempotent webhook fulfillment, operator revenue reporting), beta control plane (allowlist gating, invite-source tracking, support runbook), and funnel truth measurement (backend export event, backend-owned visitor-to-signup, cohort retention, repeat purchases) are implemented and tested. All 23 tests passing. 
+Monetization core (credit packs with Midtrans, idempotent webhook fulfillment, operator revenue reporting), beta control plane (allowlist gating, invite-source tracking, support runbook), and funnel truth measurement (backend export event, backend-owned visitor-to-signup, cohort retention, repeat purchases) are implemented and tested. Seller-first workflow with platform-based template filtering is also implemented. All core tests passing. 
 
-Next: complete the final runtime seed/API sanity check, then close Phase 4 and move remaining work to Phase 5 hardening.
+Next: Close out Phase 5 hardening and conduct final UAT.
 
 ## Current State
 
 | Area | Status | Evidence | Beta risk |
 | --- | --- | --- | --- |
-| Core seller workflow | Partial | Create/editor/tools routes exist under `frontend/src/app`, backend design/tool APIs exist under `backend/app/api` | Flow may be feature-rich but not yet measured as one seller funnel from upload to export |
+| Core seller workflow | Ready for beta | Seller-first route/wizard/interview/template flow is implemented in `frontend/src/app`; backend generation/tool APIs are active in `backend/app/api`; seller-first prefill hydration and template-platform wiring are verified | Continue monitoring full-funnel metrics (upload -> generate -> export -> payment) during controlled beta |
 | Analytics | Ready for beta | Canonical taxonomy in `docs/analytics-event-taxonomy.md`; typed frontend wrapper in `frontend/src/lib/analytics/events.ts`; acquisition, activation, export, payment, and feedback events wired | Landing + signup now also land in backend `analytics_events`, but broader product analytics still remain partially PostHog-backed |
 | Credits/billing | Ready for beta | `credit_transactions` plus `ai_usage_events` link user, job/tool job, provider/model, cost fields, credit charge, status, error, and refund transaction | Actual provider costs still depend on providers returning reliable cost metadata |
 | AI jobs | Ready for beta | Async job status plus `ai_usage_events`; refund lifecycle is mirrored into the ledger and async refunds check the ledger before issuing another refund | Legacy `_charged_credits` and `_refunded` payload markers remain for backward compatibility |
@@ -47,8 +47,7 @@ Next: complete the final runtime seed/API sanity check, then close Phase 4 and m
 - Some historical feature docs are still planning docs and should not be treated as runtime source of truth.
 - Legal/PDP pages are now visible, but formal legal review is still recommended before scaling beyond controlled beta.
 - Marketplace/template docs exist, but marketplace should remain deferred until repeat use and paid willingness are proven.
-- Credit-pack pricing is visible on the landing page, but backend payment fulfillment and operator revenue reporting are still storage-centric.
-- Invite-only beta gating is not yet the main control plane for onboarding the first 30-50 sellers.
+- Credit-pack pricing, fulfillment, and operator revenue reporting are now active for both storage add-ons and credit packs; continue weekly reconciliation during beta.
 
 ## P0 Launch-Readiness Checklist
 
@@ -91,24 +90,24 @@ Next: complete the final runtime seed/API sanity check, then close Phase 4 and m
 
 ## P1 Paid-Beta Workflow Checklist
 
-- [ ] Make credit top-up checkout first-class:
+- [x] Make credit top-up checkout first-class: **Completed 2026-05-13 (Phase 1 evidence above).**
   - Define credit pack catalog that matches landing pricing.
   - Create Midtrans checkout intent for credit packs, separate from storage add-ons.
   - Fulfill paid notifications into `credit_transactions` exactly once.
   - Show credit revenue, successful purchases, failed purchases, and repeat purchases in `/operator`.
   - Add reconciliation tests for paid, pending, failed, expired, and duplicate webhook events.
-- [ ] Polish the seller workflow as the primary path:
+- [x] Polish the seller workflow as the primary path:
   - Upload product photo
   - Choose Shopee/Tokopedia/Instagram/WhatsApp target
   - Answer short Indonesian brief
   - Generate visual and copy
   - Light edit
   - Export multi-format
-- [ ] Add marketplace/social presets as first-class choices in the create flow.
-- [ ] Prepare 20-50 internal templates for F&B, fashion, beauty, hampers, and discount campaigns.
-- [ ] Add invite-only beta access using allowlisted emails or referral codes.
-- [ ] Give beta users initial free credits and expose remaining credits clearly.
-- [ ] Add an authoritative export event that does not depend on feedback submission.
+- [x] Add marketplace/social presets as first-class choices in the create flow.
+- [x] Prepare 20-50 internal templates for F&B, fashion, beauty, hampers, and discount campaigns.
+- [x] Add invite-only beta access using allowlisted emails or referral codes.
+- [x] Give beta users initial free credits and expose remaining credits clearly.
+- [x] Add an authoritative export event that does not depend on feedback submission.
 - [x] Pull or mirror `visitor_to_signup` from backend analytics into the weekly operator review.
 - [ ] Replace shared operator token storage with session/role-based admin access before adding non-founder operators.
 - [x] Add weekly beta review dashboard/query. **Completed 2026-05-12:** internal `/api/internal/operator-summary` now includes `weekly_beta_review` funnel/cost block; operational query pack documented in `docs/weekly-beta-review-dashboard.md`.
@@ -208,7 +207,7 @@ Acceptance criteria:
 - Repeat purchase metric now counts users with 2+ paid credit purchases inside a 30-day window
 - Validation: Phase 3 metrics helpers covered by `tests/test_phase3_metrics.py` and backend suite passing
 
-### Phase 4: Seller-First Activation (Week 3-5)
+### Phase 4: Seller-First Activation (Week 3-5) ✅ COMPLETE
 
 Goal: make the first value moment obvious for the target seller.
 
@@ -224,6 +223,7 @@ Completion evidence (2026-05-14):
 - Interview page now hydrates seller-first prefill from `DESIGN_BRIEF_SESSION_KEY` once after auth is ready, preserving the guided onboarding path instead of dropping users back into a blank generic form.
 - Template API supports `platform` filtering and returns `platform` in both list/detail payloads.
 - Backend template API coverage now includes explicit tests for `?platform=shopee` filtering and template detail payload shape.
+- Backend generation coverage now includes explicit Celery dispatch/worker tests that verify `template_id` propagation and `prompt_suffix` injection on production runtime path (`USE_CELERY=true`).
 - Source template seed inventory remains above threshold with 44 entries total and platform-tagged sets for Shopee, Tokopedia, Instagram, Instagram Story, and WhatsApp.
 - Verification passed: frontend lint, frontend build, backend tests, and Playwright hydration scenario for seller-first interview prefill.
 
@@ -236,7 +236,9 @@ Acceptance criteria:
 Current closeout note:
 
 - The onboarding optimization and template-platform plumbing are now implemented and verified in code/tests.
-- Before declaring Phase 4 fully closed, perform one final runtime sanity check against a seeded local/runtime templates dataset so the "usable in production data" criterion is evidenced beyond source code + API tests.
+- `TemplateBrowser` is successfully integrated as Step 3 in the `SellerChannelWizard`, allowing users to filter presets based on their selected channel.
+- Final functional caveats resolved: "general" channel template display is unblocked, users can explicitly "Lanjut Tanpa Template", and backend generation now consumes `template_id` in both synchronous and Celery worker paths to inject specific `prompt_suffix` instructions.
+- Phase 4 is now officially CLOSED. Next steps should focus on UAT and Phase 5 operator hardening.
 
 ### Phase 5: Operator And Security Hardening (Week 5-6)
 

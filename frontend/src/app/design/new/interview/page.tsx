@@ -405,9 +405,13 @@ export default function DesignInterviewPage() {
             catalogTotalPages: finalGoal === "catalog" ? finalCatalogTotalPages : undefined,
             isSkip,
         });
+        const savedSession = window.sessionStorage.getItem(DESIGN_BRIEF_SESSION_KEY);
+        const existingSession = savedSession ? JSON.parse(savedSession) : {};
+
         window.sessionStorage.setItem(
             DESIGN_BRIEF_SESSION_KEY,
             JSON.stringify({
+                ...existingSession,
                 goal: finalGoal,
                 productType: finalProductType,
                 customProductType: finalCustomProductType || undefined,

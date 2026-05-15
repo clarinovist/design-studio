@@ -6,7 +6,7 @@ import { Loader2, LayoutTemplate } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 
-interface TemplateData {
+export interface TemplateData {
     id: string;
     name: string;
     category: string;

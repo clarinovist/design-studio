@@ -68,6 +68,7 @@ async def _execute_pipeline(
     style: str,
     reference_url: str | None,
     integrated_text: bool,
+    template_id: str | None = None,
     reference_focus: str = "auto",
     brand_colors: list | None = None,
     brand_typography: dict | None = None,
@@ -127,6 +128,24 @@ async def _execute_pipeline(
                 visual_prompt_final = assembled if assembled else parsed.visual_prompt
             else:
                 visual_prompt_final = parsed.visual_prompt
+
+            if template_id:
+                try:
+                    from app.models.template import Template
+                    import uuid
+
+                    template_uuid = uuid.UUID(template_id)
+                    async with AsyncSessionLocal() as session:
+                        template = await session.get(Template, template_uuid)
+                    if template and template.prompt_suffix:
+                        visual_prompt_final = f"{visual_prompt_final}, {template.prompt_suffix}"
+                except Exception:
+                    logger.warning(
+                        "Failed to load template prompt suffix for job %s (template_id=%s)",
+                        job_id,
+                        template_id,
+                        exc_info=True,
+                    )
 
             parsed_headline = parsed.headline
             parsed_sub_headline = parsed.sub_headline
@@ -318,6 +337,7 @@ def generate_design_task(self, *args, **kwargs):
         "reference_url",
         "reference_focus",
         "integrated_text",
+        "template_id",
         "brand_colors",
         "brand_typography",
         "headline_override",
@@ -335,6 +355,7 @@ def generate_design_task(self, *args, **kwargs):
     raw_text = payload["raw_text"]
     aspect_ratio = payload.get("aspect_ratio", "1:1")
     style = payload.get("style", "auto")
+    template_id = payload.get("template_id")
     reference_url = payload.get("reference_url")
     reference_focus = payload.get("reference_focus", "auto")
     integrated_text = payload.get("integrated_text", False)
@@ -353,23 +374,24 @@ def generate_design_task(self, *args, **kwargs):
     try:
         _run_async(
             _execute_pipeline(
-                job_id,
-                raw_text,
-                aspect_ratio,
-                style,
-                reference_url,
-                integrated_text,
-                reference_focus,
-                brand_colors,
-                brand_typography,
-                headline_override,
-                sub_headline_override,
-                cta_override,
-                product_name,
-                offer_text,
-                use_ai_copy_assist,
+                job_id=job_id,
+                raw_text=raw_text,
+                aspect_ratio=aspect_ratio,
+                style=style,
+                reference_url=reference_url,
+                integrated_text=integrated_text,
+                reference_focus=reference_focus,
+                brand_colors=brand_colors,
+                brand_typography=brand_typography,
+                headline_override=headline_override,
+                sub_headline_override=sub_headline_override,
+                cta_override=cta_override,
+                product_name=product_name,
+                offer_text=offer_text,
+                use_ai_copy_assist=use_ai_copy_assist,
                 num_variations=num_variations,
                 seed=seed,
+                template_id=template_id,
                 charged_credits=charged_credits,
                 current_retry=task_ctx.request.retries,
                 max_retries=task_ctx.max_retries,

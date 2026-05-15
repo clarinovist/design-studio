@@ -110,9 +110,70 @@ async def test_execute_pipeline_reuses_parse_checkpoint(
     assert mock_generate_background.await_args_list[0].kwargs["visual_prompt"] == "saved visual prompt"
 
 
+@pytest.mark.asyncio
+@patch("app.workers.design_generation.AsyncSessionLocal")
+@patch("app.workers.design_generation._mark_job_usage_best_effort", new_callable=AsyncMock)
+@patch("app.workers.design_generation._get_job_checkpoint", new_callable=AsyncMock)
+@patch("app.workers.design_generation._update_job_status", new_callable=AsyncMock)
+@patch("app.workers.design_generation.upload_image", new_callable=AsyncMock)
+@patch("app.workers.design_generation.download_image", new_callable=AsyncMock)
+@patch("app.workers.design_generation.generate_background", new_callable=AsyncMock)
+@patch("app.services.quantum_service.optimize_quantum_layout", new_callable=AsyncMock)
+@patch("app.workers.design_generation.parse_design_text", new_callable=AsyncMock)
+async def test_execute_pipeline_applies_template_prompt_suffix(
+    mock_parse_design_text,
+    mock_optimize_quantum_layout,
+    mock_generate_background,
+    mock_download_image,
+    mock_upload_image,
+    mock_update_job_status,
+    mock_get_job_checkpoint,
+    mock_mark_job_usage,
+    mock_async_session_local,
+):
+    mock_get_job_checkpoint.return_value = {}
+    mock_parse_design_text.return_value = SimpleNamespace(
+        headline="Headline",
+        sub_headline="Sub",
+        cta="CTA",
+        visual_prompt="base prompt",
+        visual_prompt_parts=None,
+    )
+    mock_optimize_quantum_layout.return_value = None
+    mock_generate_background.return_value = {
+        "image_url": "https://cdn.example.com/generated.jpg",
+        "content_type": "image/jpeg",
+    }
+    mock_mark_job_usage.return_value = None
+    mock_download_image.return_value = b"abc123"
+    mock_upload_image.return_value = "https://cdn.example.com/permanent.jpg"
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(
+        return_value=SimpleNamespace(prompt_suffix="cinematic product lighting")
+    )
+    mock_async_session_local.return_value.__aenter__.return_value = mock_session
+
+    template_id = str(uuid4())
+    await _execute_pipeline(
+        job_id="job-template",
+        raw_text="Buat desain",
+        aspect_ratio="1:1",
+        style="auto",
+        reference_url=None,
+        integrated_text=False,
+        template_id=template_id,
+    )
+
+    mock_session.get.assert_awaited_once()
+    assert mock_generate_background.await_args_list[0].kwargs["visual_prompt"] == (
+        "base prompt, cinematic product lighting"
+    )
+
+
 @patch("app.workers.design_generation._run_async")
-@patch("app.workers.design_generation._execute_pipeline", new_callable=MagicMock)
-def test_generate_design_task_passes_arguments_in_correct_order(
+@patch("app.workers.design_generation._execute_pipeline", autospec=True)
+def test_generate_design_task_passes_payload_as_keywords(
     mock_execute_pipeline,
     mock_run_async,
 ):
@@ -134,10 +195,15 @@ def test_generate_design_task_passes_arguments_in_correct_order(
         integrated_text=True,
     )
 
-    call_args = mock_execute_pipeline.call_args.args
-    assert call_args[5] is True
-    assert call_args[6] == "human"
-    mock_run_async.assert_called_once_with("coro")
+    assert mock_execute_pipeline.call_args.args == ()
+    call_kwargs = mock_execute_pipeline.call_args.kwargs
+    assert call_kwargs["integrated_text"] is True
+    assert call_kwargs["reference_focus"] == "human"
+    assert call_kwargs["template_id"] is None
+    mock_run_async.assert_called_once()
+    run_async_arg = mock_run_async.call_args.args[0]
+    assert hasattr(run_async_arg, "__await__")
+    run_async_arg.close()
 
 
 @patch("app.workers.design_generation._run_async")
@@ -318,6 +384,58 @@ async def test_generate_design_sync_passes_request_aspect_ratio_to_quantum_layou
     mock_log_credit_change.assert_awaited()
     mock_optimize_quantum_layout.assert_awaited_once_with(
         "HEADLINE MANUAL", "SUB MANUAL", "CTA MANUAL", ratio="9:16", num_variations=3
+    )
+
+
+@pytest.mark.asyncio
+@patch("app.workers.tasks.generate_design_task.delay")
+@patch("app.services.ai_usage_service.record_ai_usage_charge", new_callable=AsyncMock)
+@patch("app.services.credit_service.log_credit_change", new_callable=AsyncMock)
+async def test_generate_design_celery_dispatch_includes_template_id(
+    mock_log_credit_change,
+    mock_record_ai_usage_charge,
+    mock_generate_design_task_delay,
+    monkeypatch,
+):
+    monkeypatch.setenv("USE_CELERY", "true")
+    monkeypatch.setattr("app.core.config.settings.FAL_KEY", "test-fal-key", raising=False)
+
+    mock_log_credit_change.return_value = SimpleNamespace(id=uuid4())
+    mock_record_ai_usage_charge.return_value = None
+
+    created_jobs = []
+
+    def _capture_add(job):
+        created_jobs.append(job)
+
+    mock_db = MagicMock()
+    mock_db.add.side_effect = _capture_add
+    mock_db.flush = AsyncMock()
+    mock_db.commit = AsyncMock()
+    mock_db.refresh = AsyncMock()
+
+    user = SimpleNamespace(
+        id=uuid4(),
+        credits_remaining=999,
+        plan_tier="starter",
+    )
+
+    template_id = str(uuid4())
+    request = DesignGenerationRequest(
+        raw_text="Promo akhir pekan",
+        aspect_ratio="1:1",
+        style_preference="bold",
+        integrated_text=False,
+        template_id=template_id,
+    )
+
+    response = await generate_design(request=request, db=mock_db, current_user=user)
+
+    assert response["status"] == "queued"
+    assert created_jobs, "expected a Job instance to be added to the session"
+    mock_generate_design_task_delay.assert_called_once()
+    assert (
+        mock_generate_design_task_delay.call_args.kwargs["template_id"] == template_id
     )
 
 
