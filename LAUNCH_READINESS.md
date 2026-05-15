@@ -1,16 +1,23 @@
 # Launch Readiness
 
-Last audited: 2026-05-14
+Last audited: 2026-05-15
 
 This file is the paid-beta operating snapshot for SmartDesign Studio. It focuses on whether the product can run a controlled 30-50 seller beta with enough measurement, billing discipline, admin visibility, security, and documentation hygiene.
 
 ## Executive Summary
 
-Status: **Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 are COMPLETE. Seller-first activation and operator/security hardening are integrated. Final UAT remains before widening beta traffic.**
+Status: **Phase 1, Phase 2, Phase 3, and Phase 4 are COMPLETE. Open-beta hardening blockers are actively being implemented before traffic is widened.**
 
 Monetization core (credit packs with Midtrans, idempotent webhook fulfillment, operator revenue reporting), beta control plane (allowlist gating, invite-source tracking, support runbook), and funnel truth measurement (backend export event, backend-owned visitor-to-signup, cohort retention, repeat purchases) are implemented and tested. Seller-first workflow with platform-based template filtering is also implemented. All core tests passing. 
 
-Next: Conduct final UAT and decide open-beta hardening gates (signed URL and malware scanning).
+Next: Conduct final UAT and close open-beta blockers (retention cleanup automation, malware scanning rollout, and signed/private URL primitives).
+
+## Open Beta Blockers In Progress
+
+- Retention cleanup automation is being added with safe default dry-run mode and explicit execute mode for manual approval.
+- Malware scanning integration is planned behind feature flags with rollout modes (`disabled`, `log_only`, `block`) so staging can observe before production enforcement.
+- Signed/private URL rollout is planned incrementally (asset-sign endpoint and ownership validation first; UI rollout by surface after backend primitive readiness).
+- Manual Phase 5 staging UAT runbook execution remains required before widening beta traffic.
 
 ## Current State
 

@@ -178,6 +178,9 @@ jobs:
       - name: ESLint
         run: cd frontend && npm run lint
 
+      - name: Unit Tests
+        run: cd frontend && npm run test:unit
+
       - name: Type Check & Build
         run: cd frontend && npm run build
         env:
