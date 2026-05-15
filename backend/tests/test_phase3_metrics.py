@@ -3,11 +3,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.api.internal_metrics import _get_cohort_d1_d7_retention, _weekly_beta_review, _visitor_to_signup_metrics
+from app.api.internal_metrics import _get_cohort_d1_d7_d30_retention, _weekly_beta_review, _visitor_to_signup_metrics
 
 
 @pytest.mark.asyncio
-async def test_get_cohort_d1_d7_retention_counts_export_generation_and_usage() -> None:
+async def test_get_cohort_d1_d7_d30_retention_counts_export_generation_and_usage() -> None:
     db = AsyncMock()
 
     def result(rows):
@@ -32,7 +32,7 @@ async def test_get_cohort_d1_d7_retention_counts_export_generation_and_usage() -
         result([]),
     ]
 
-    retention = await _get_cohort_d1_d7_retention(db)
+    retention = await _get_cohort_d1_d7_d30_retention(db)
 
     assert retention["2026-05-12"]["d0_users"] == 2
     assert retention["2026-05-12"]["d1_users"] == 2
@@ -78,7 +78,7 @@ async def test_weekly_beta_review_uses_backend_export_events_and_repeat_purchase
         patch("app.api.internal_metrics._visitor_to_signup_metrics", new_callable=AsyncMock) as visitor_to_signup,
         patch("app.api.internal_metrics._count_users_with_export_events", new_callable=AsyncMock) as export_events,
         patch("app.api.internal_metrics._count_repeat_purchasers_within_30d", new_callable=AsyncMock) as repeat_purchasers,
-        patch("app.api.internal_metrics._get_cohort_d1_d7_retention", new_callable=AsyncMock) as cohort_retention,
+        patch("app.api.internal_metrics._get_cohort_d1_d7_d30_retention", new_callable=AsyncMock) as cohort_retention,
     ):
         scalar_int.side_effect = [10, 5, 4, 3, 2, 1]
         scalar_float.return_value = 12.3456

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { buildExportEventPayload, sendExportEvent } from "@/components/editor/exportEvent";
 
 interface ExportDialogProps {
     open: boolean;
@@ -105,26 +106,14 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ open, onOpenChange, 
 
             // Fire-and-forget backend export event for operator funnel metrics.
             if (projectId) {
-                const exportFormat = format === "jpeg" ? "jpg" : format;
-                fetch(`${API_BASE_URL}/designs/${projectId}/export-event`, {
-                    method: "POST",
-                    headers: getHeaders(),
-                    body: JSON.stringify({
-                        export_format: exportFormat,
-                        job_id: null,
-                        target_platform: null,
-                        source: "editor",
-                    }),
-                }).then((response) => {
-                    if (!response.ok) {
-                        console.warn("Export event logging failed", {
-                            status: response.status,
-                            statusText: response.statusText,
-                        });
-                    }
-                }).catch((eventErr) => {
-                    console.warn("Export event logging failed", eventErr);
-                });
+                const payload = buildExportEventPayload(format);
+                void sendExportEvent(
+                    fetch,
+                    console.warn,
+                    `${API_BASE_URL}/designs/${projectId}/export-event`,
+                    getHeaders(),
+                    payload,
+                );
             }
 
             setExportCompleted(true);

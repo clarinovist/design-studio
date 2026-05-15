@@ -281,7 +281,7 @@ async def generate_design(
     await db.flush()
 
     from app.services.ai_usage_service import record_ai_usage_charge, update_usage_for_job
-    from app.services.provider_costs import estimate_ai_cost_usd
+    from app.services.provider_costs import estimate_ai_cost_usd, estimated_cost_metadata
 
     requested_quality_for_ledger = (getattr(request, "quality", "auto") or "auto").lower()
     estimated_cost = estimate_ai_cost_usd(
@@ -304,6 +304,7 @@ async def generate_design(
             "aspect_ratio": str(request.aspect_ratio),
             "has_reference_image": bool(effective_reference_image_url),
             "integrated_text": bool(request.integrated_text),
+            **(estimated_cost_metadata() if estimated_cost is not None else {}),
         },
     )
     await db.commit()
@@ -606,7 +607,10 @@ async def generate_design(
                     model="gpt-image-2",
                     quality=selected_model_tier,
                 ),
-                metadata={"ultra_surcharge_transaction_id": str(ultra_tx.id) if ultra_tx else None},
+                metadata={
+                    "ultra_surcharge_transaction_id": str(ultra_tx.id) if ultra_tx else None,
+                    **estimated_cost_metadata(),
+                },
             )
             fal_result = await generate_background_ultra(
                 visual_prompt=enhanced_prompt,
@@ -892,7 +896,7 @@ async def redesign_image(
     db.add(job)
     await db.flush()
     from app.services.ai_usage_service import record_ai_usage_charge, update_usage_for_job
-    from app.services.provider_costs import estimate_ai_cost_usd, extract_actual_cost_usd
+    from app.services.provider_costs import estimate_ai_cost_usd, extract_actual_cost_usd, estimated_cost_metadata
 
     estimated_cost = estimate_ai_cost_usd(
         operation="redesign",
@@ -914,6 +918,7 @@ async def redesign_image(
         metadata={
             "aspect_ratio": str(request.aspect_ratio),
             "preserve_product": bool(request.preserve_product),
+            **(estimated_cost_metadata() if estimated_cost is not None else {}),
         },
     )
     await db.commit()

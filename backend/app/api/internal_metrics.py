@@ -277,7 +277,7 @@ async def _count_active_users_in_window(
     return len(active_user_ids)
 
 
-async def _get_cohort_d1_d7_retention(db: AsyncSession) -> dict:
+async def _get_cohort_d1_d7_d30_retention(db: AsyncSession) -> dict:
     """Calculate D1 point retention and D7/D30 cumulative active-by-day metrics.
 
     Returns dict with cohort dates and their D0/D1 plus cumulative D7/D30 metrics.
@@ -425,7 +425,7 @@ async def _weekly_beta_review(db: AsyncSession, since_7d: datetime, since_30d: d
         select(func.count()).select_from(repeat_use_subquery),
     )
 
-    cohort_retention = await _get_cohort_d1_d7_retention(db)
+    cohort_retention = await _get_cohort_d1_d7_d30_retention(db)
 
     ai_actual_cost_7d = await _scalar_float(
         db,

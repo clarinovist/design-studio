@@ -16,7 +16,7 @@ from app.services.llm_client import LLMRateLimitError
 from app.services.image_service import generate_background
 from app.services.llm_service import apply_copy_overrides, parse_design_text
 from app.services.preprocess import prepare_reference
-from app.services.provider_costs import estimate_ai_cost_usd, sum_actual_cost_usd
+from app.services.provider_costs import estimate_ai_cost_usd, estimated_cost_metadata, sum_actual_cost_usd
 from app.services.storage_service import download_image, upload_image
 from app.workers.ai_tool_jobs_common import run_async as _run_async
 from app.workers.celery_app import celery_app
@@ -290,7 +290,8 @@ async def _execute_pipeline(
                 ),
                 actual_cost=actual_cost,
                 metadata={
-                    "actual_cost_source": "provider" if actual_cost is not None else "missing_from_provider"
+                    "actual_cost_source": "provider" if actual_cost is not None else "missing_from_provider",
+                    **estimated_cost_metadata(),
                 },
             )
         logger.info(f"Design generation completed successfully | Job: {job_id}")

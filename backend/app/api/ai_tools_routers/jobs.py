@@ -29,7 +29,7 @@ from app.services.ai_usage_service import (
     record_ai_usage_charge,
     update_usage_for_job,
 )
-from app.services.provider_costs import estimate_ai_cost_usd
+from app.services.provider_costs import estimate_ai_cost_usd, estimated_cost_metadata
 from app.services.storage_service import download_image
 from app.services.subject_classifier_service import (
     build_product_scene_policy_result,
@@ -243,6 +243,7 @@ async def create_tool_job(
                     "tool_name": request.tool_name,
                     "idempotency_key": request.idempotency_key,
                     "batch_file_count": file_count if request.tool_name == "batch" else None,
+                    **estimated_cost_metadata(),
                 },
             )
             await db.commit()

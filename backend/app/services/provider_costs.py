@@ -7,6 +7,7 @@ from typing import Any
 
 
 _DECIMAL_PLACES = Decimal("0.000001")
+ESTIMATED_COST_SOURCE = "heuristic_table_v1"
 
 
 def _to_decimal(value: Any) -> Decimal | None:
@@ -123,3 +124,8 @@ def sum_actual_cost_usd(provider_results: list[Any]) -> Decimal | None:
     if not found:
         return None
     return total.quantize(_DECIMAL_PLACES, rounding=ROUND_HALF_UP)
+
+
+def estimated_cost_metadata() -> dict[str, str]:
+    """Metadata marker describing how estimated_cost was produced."""
+    return {"estimated_cost_source": ESTIMATED_COST_SOURCE}
