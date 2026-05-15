@@ -233,7 +233,6 @@ async def delete_image(url: str) -> bool:
     """
     import logging
     import os
-    import re
 
     logger = logging.getLogger(__name__)
 
