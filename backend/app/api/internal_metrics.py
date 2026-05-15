@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_optional_current_user, is_admin_user
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.exceptions import ForbiddenError, UnauthorizedError, ValidationError, NotFoundError
@@ -27,16 +28,36 @@ from app.services.llm_metrics import get_llm_metrics_snapshot
 router = APIRouter(tags=["Internal"])
 
 
-def require_internal_token(x_internal_token: Optional[str] = Header(default=None)) -> None:
+def require_internal_token(x_internal_token: Optional[str] = Header(default=None)) -> bool:
     configured_token = settings.INTERNAL_METRICS_TOKEN.strip()
     if not configured_token:
-        raise ForbiddenError(detail="INTERNAL_METRICS_TOKEN is not configured")
+        return False
 
     if not x_internal_token:
-        raise UnauthorizedError(detail="Missing X-Internal-Token header")
+        return False
 
     if not secrets.compare_digest(x_internal_token, configured_token):
-        raise UnauthorizedError(detail="Invalid internal token")
+        return False
+
+    return True
+
+
+async def require_operator_access(
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    x_internal_token: Optional[str] = Header(default=None),
+) -> None:
+    if current_user is not None:
+        if is_admin_user(current_user):
+            return
+        raise ForbiddenError(detail="Admin access required")
+
+    if settings.ALLOW_INTERNAL_TOKEN_FALLBACK and require_internal_token(x_internal_token):
+        return
+
+    if settings.ALLOW_INTERNAL_TOKEN_FALLBACK and not settings.INTERNAL_METRICS_TOKEN.strip():
+        raise ForbiddenError(detail="INTERNAL_METRICS_TOKEN is not configured")
+
+    raise UnauthorizedError(detail="Not authenticated")
 
 
 async def _scalar_int(db: AsyncSession, stmt) -> int:
@@ -459,14 +480,14 @@ async def _weekly_beta_review(db: AsyncSession, since_7d: datetime, since_30d: d
 
 
 @router.get("/llm-metrics")
-async def get_internal_llm_metrics(_: None = Depends(require_internal_token)):
+async def get_internal_llm_metrics(_: None = Depends(require_operator_access)):
 
     return get_llm_metrics_snapshot()
 
 
 @router.get("/operator-summary")
 async def get_operator_summary(
-    _: None = Depends(require_internal_token),
+    _: None = Depends(require_operator_access),
     db: AsyncSession = Depends(get_db),
 ):
     now = datetime.now(timezone.utc)
@@ -639,7 +660,7 @@ async def get_operator_summary(
 )
 async def add_allowlist_entry(
     payload: dict,  # {entry_type, entry_value, beta_cohort?, initial_credits_grant?, notes?}
-    _: None = Depends(require_internal_token),
+    _: None = Depends(require_operator_access),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -686,7 +707,7 @@ async def list_allowlist_entries(
     offset: int = 0,
     entry_type: Optional[str] = None,
     status_filter: Optional[str] = None,
-    _: None = Depends(require_internal_token),
+    _: None = Depends(require_operator_access),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -731,7 +752,7 @@ async def list_allowlist_entries(
 async def update_allowlist_entry(
     entry_id: str,
     payload: dict,  # {status?, initial_credits_grant?, notes?}
-    _: None = Depends(require_internal_token),
+    _: None = Depends(require_operator_access),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -768,7 +789,7 @@ async def update_allowlist_entry(
     summary="Get beta allowlist statistics",
 )
 async def get_allowlist_stats(
-    _: None = Depends(require_internal_token),
+    _: None = Depends(require_operator_access),
     db: AsyncSession = Depends(get_db),
 ):
     """

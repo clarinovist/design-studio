@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { AlertCircle, Bot, CreditCard, Loader2, MessageSquare, RefreshCw, Users, WalletCards } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { API_BASE_URL } from "@/lib/api/coreApi";
 
 type StatusMap = Record<string, number>;
@@ -107,8 +107,6 @@ interface OperatorSummary {
   weekly_beta_review: WeeklyBetaReview;
 }
 
-const TOKEN_STORAGE_KEY = "smartdesign_operator_token";
-
 function formatNumber(value: number): string {
   return new Intl.NumberFormat("id-ID").format(value);
 }
@@ -178,21 +176,19 @@ function formatRate(value: number | null): string {
 }
 
 export default function OperatorDashboardPage() {
-  const [token, setToken] = useState("");
+  const { data: session, status } = useSession();
   const [summary, setSummary] = useState<OperatorSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    setToken(localStorage.getItem(TOKEN_STORAGE_KEY) || "");
-  }, []);
+  const getSessionToken = useCallback(() => {
+    return (session as { accessToken?: string } | null)?.accessToken?.trim() || "";
+  }, [session]);
 
-  const hasToken = token.trim().length > 0;
-
-  const loadSummary = useCallback(async (nextToken = token) => {
-    const trimmed = nextToken.trim();
-    if (!trimmed) {
-      setError("Masukkan internal token.");
+  const loadSummary = useCallback(async (accessToken: string) => {
+    if (!accessToken) {
+      setError("Sesi login tidak valid. Silakan login ulang.");
       return;
     }
 
@@ -201,27 +197,50 @@ export default function OperatorDashboardPage() {
     try {
       const response = await fetch(`${API_BASE_URL}/internal/operator-summary`, {
         headers: {
-          "X-Internal-Token": trimmed,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
+
+      if (response.status === 403) {
+        setIsAdmin(false);
+        setSummary(null);
+        setError("Akses admin diperlukan.");
+        return;
+      }
+
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
         throw new Error(payload?.error?.detail || payload?.detail || "Gagal memuat operator summary.");
       }
+
       const data = (await response.json()) as OperatorSummary;
       setSummary(data);
-      localStorage.setItem(TOKEN_STORAGE_KEY, trimmed);
+      setIsAdmin(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat operator summary.");
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, []);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    loadSummary();
-  };
+  useEffect(() => {
+    if (status !== "authenticated") {
+      setSummary(null);
+      setIsAdmin(null);
+      setError(null);
+      return;
+    }
+
+    const accessToken = getSessionToken();
+    if (!accessToken) {
+      setSummary(null);
+      setIsAdmin(null);
+      setError("Sesi login tidak valid. Silakan login ulang.");
+      return;
+    }
+
+    loadSummary(accessToken);
+  }, [getSessionToken, loadSummary, status]);
 
   const generatedAt = useMemo(() => {
     if (!summary?.generated_at) return null;
@@ -245,19 +264,25 @@ export default function OperatorDashboardPage() {
               Paid beta health, usage, billing, and failure visibility.
             </p>
           </div>
-          <form onSubmit={handleSubmit} className="flex w-full flex-col gap-2 sm:max-w-md sm:flex-row">
-            <Input
-              type="password"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              placeholder="Internal token"
-              autoComplete="off"
-            />
-            <Button type="submit" disabled={loading || !hasToken}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-              Refresh
-            </Button>
-          </form>
+          <div className="flex w-full justify-start sm:max-w-md sm:justify-end">
+            {status === "authenticated" ? (
+              <Button
+                type="button"
+                disabled={loading || isAdmin !== true}
+                onClick={() => {
+                  const accessToken = getSessionToken();
+                  loadSummary(accessToken);
+                }}
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Refresh
+              </Button>
+            ) : (
+              <Button type="button" onClick={() => signIn(undefined, { callbackUrl: "/operator" })}>
+                Login untuk akses operator
+              </Button>
+            )}
+          </div>
         </div>
 
         {error ? (
@@ -267,9 +292,17 @@ export default function OperatorDashboardPage() {
           </div>
         ) : null}
 
-        {!summary ? (
+        {status !== "authenticated" ? (
           <div className="mt-12 rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
-            Masukkan token internal untuk melihat ringkasan operator.
+            Anda belum login. Masuk dengan akun admin untuk melihat dashboard operator.
+          </div>
+        ) : isAdmin === false ? (
+          <div className="mt-12 rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+            Akses admin diperlukan.
+          </div>
+        ) : !summary ? (
+          <div className="mt-12 rounded-lg border bg-card p-8 text-center text-sm text-muted-foreground">
+            {loading ? "Memuat ringkasan operator..." : "Ringkasan operator belum tersedia."}
           </div>
         ) : (
           <div className="mt-8 space-y-8">

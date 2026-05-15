@@ -79,7 +79,7 @@ flowchart TB
     BE --> Obs
 ```
 
-Production should expose only the reverse proxy/ingress publicly. Backend, worker, database, Redis, and internal operator endpoints should remain private or token-protected. Database and Redis must not be exposed to the public internet.
+Production should expose only the reverse proxy/ingress publicly. Backend, worker, database, Redis, and internal operator endpoints should remain private or admin-identity-protected. Database and Redis must not be exposed to the public internet.
 
 ## Stateful Components
 
@@ -90,12 +90,13 @@ Production should expose only the reverse proxy/ingress publicly. Backend, worke
 
 ## Required Runtime Guardrails
 
-When `ENVIRONMENT=staging`, `ENVIRONMENT=production`, or `REQUIRE_PRODUCTION_SECRETS=true`, the backend now fails startup if required provider, storage, payment, and internal-token settings are missing. See `backend/app/core/config.py`.
+When `ENVIRONMENT=staging`, `ENVIRONMENT=production`, or `REQUIRE_PRODUCTION_SECRETS=true`, the backend now fails startup if required provider, storage, payment, admin-auth bootstrap, or optional token-fallback settings are missing. See `backend/app/core/config.py`.
 
 ## Deployment Checklist
 
 - Run Alembic migrations before serving traffic.
-- Confirm `INTERNAL_METRICS_TOKEN` is set before enabling `/operator`.
+- Confirm admin bootstrap is configured (`users.role` and/or `OPERATOR_ADMIN_EMAILS`) before enabling `/operator` for operators.
+- Keep `ALLOW_INTERNAL_TOKEN_FALLBACK=false` in normal operations; if enabled temporarily, set `INTERNAL_METRICS_TOKEN` and disable fallback after transition.
 - Confirm `FAL_KEY`, `OPENROUTER_API_KEY`, S3 credentials, and payment secrets are present in staging/production.
 - Keep `USE_CELERY=true` only when Redis and the worker are healthy.
 - Keep a rollback target commit or image tag for each paid-beta deployment.

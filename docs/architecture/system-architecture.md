@@ -53,7 +53,7 @@ The frontend uses Next.js App Router, React, TypeScript, Tailwind, Zustand, Reac
 - create flow and editor experience,
 - project/library/settings surfaces,
 - client-side funnel events through `frontend/src/lib/analytics/events.ts`,
-- the internal `/operator` dashboard gated by `X-Internal-Token`.
+- the internal `/operator` dashboard using admin session auth by default, with token fallback only for explicit transition mode.
 
 Frontend code does not call AI providers directly. Business operations go through backend APIs.
 

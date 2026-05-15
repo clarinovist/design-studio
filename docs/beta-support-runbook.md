@@ -9,6 +9,12 @@ This runbook covers the top five incident types expected during the controlled p
 - **P2**: UI lag; slow export; allowlist entry not working as expected
 - **P3**: Copy/design quality feedback; feature request; general support question
 
+## Operator Access Model
+
+- Internal operator APIs now require authenticated admin identity.
+- Use bearer auth from an admin session token, not browser-stored shared tokens.
+- Emergency token fallback exists only if `ALLOW_INTERNAL_TOKEN_FALLBACK=true` and should remain off by default.
+
 ---
 
 ## 1. User Cannot Sign Up (P0/P1)
@@ -260,8 +266,8 @@ ORDER BY count DESC;
 Every morning (or shift change), operator should run:
 
 ```bash
-# 1. Check operator summary
-curl -H "X-Internal-Token: $INTERNAL_TOKEN" http://localhost:8000/api/internal/operator-summary
+# 1. Check operator summary with admin bearer token
+curl -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" http://localhost:8000/api/internal/operator-summary
 
 # 2. Look for:
 #    - failed generation count spike

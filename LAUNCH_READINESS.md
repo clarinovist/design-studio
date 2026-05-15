@@ -6,11 +6,11 @@ This file is the paid-beta operating snapshot for SmartDesign Studio. It focuses
 
 ## Executive Summary
 
-Status: **Phase 1, Phase 2, Phase 3, and Phase 4 are COMPLETE. Seller-first activation is fully integrated, including the `TemplateBrowser` in the wizard flow. The remaining work focuses on Phase 5 operator/security hardening and final UAT before the controlled paid beta.**
+Status: **Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 are COMPLETE. Seller-first activation and operator/security hardening are integrated. Final UAT remains before widening beta traffic.**
 
 Monetization core (credit packs with Midtrans, idempotent webhook fulfillment, operator revenue reporting), beta control plane (allowlist gating, invite-source tracking, support runbook), and funnel truth measurement (backend export event, backend-owned visitor-to-signup, cohort retention, repeat purchases) are implemented and tested. Seller-first workflow with platform-based template filtering is also implemented. All core tests passing. 
 
-Next: Close out Phase 5 hardening and conduct final UAT.
+Next: Conduct final UAT and decide open-beta hardening gates (signed URL and malware scanning).
 
 ## Current State
 
@@ -20,8 +20,8 @@ Next: Close out Phase 5 hardening and conduct final UAT.
 | Analytics | Ready for beta | Canonical taxonomy in `docs/analytics-event-taxonomy.md`; typed frontend wrapper in `frontend/src/lib/analytics/events.ts`; acquisition, activation, export, payment, and feedback events wired | Landing + signup now also land in backend `analytics_events`, but broader product analytics still remain partially PostHog-backed |
 | Credits/billing | Ready for beta | `credit_transactions` plus `ai_usage_events` link user, job/tool job, provider/model, cost fields, credit charge, status, error, and refund transaction | Actual provider costs still depend on providers returning reliable cost metadata |
 | AI jobs | Ready for beta | Async job status plus `ai_usage_events`; refund lifecycle is mirrored into the ledger and async refunds check the ledger before issuing another refund | Legacy `_charged_credits` and `_refunded` payload markers remain for backward compatibility |
-| Payments | Ready for beta | Storage payments and credit-pack revenue/fulfillment are visible in `/api/internal/operator-summary` and `/operator` | Shared operator auth and broader payment ops hardening remain for post-beta |
-| Admin/operator dashboard | Ready for founder-led beta | Token-protected `/api/internal/operator-summary` and `/operator` show users, jobs, AI usage/cost, credits, payments, failures/refunds, and export feedback | Shared internal token stored by the browser should be replaced with role-based/session auth before a larger team uses it |
+| Payments | Ready for beta | Storage payments and credit-pack revenue/fulfillment are visible in `/api/internal/operator-summary` and `/operator` | Continue weekly reconciliation and monitor pending payment aging |
+| Admin/operator dashboard | Ready for multi-operator beta | Admin-session-protected `/api/internal/operator-summary` and `/operator` show users, jobs, AI usage/cost, credits, payments, failures/refunds, and export feedback | Keep `ALLOW_INTERNAL_TOKEN_FALLBACK` disabled unless emergency transition is required |
 | Upload/security | Ready for beta | `docs/upload-security-audit.md` covers every `UploadFile` endpoint; PDF brand-guidelines upload now has size/magic-byte checks and action rate limiting | Malware scanning, signed private URLs, and retention automation remain post-beta hardening |
 | Legal/PDP baseline | Ready for beta | Product-facing `/terms`, `/privacy`, and `/privacy#penghapusan-data` now disclose paid-beta terms, third-party AI providers, and account/data deletion handling | Formal legal review is still recommended before scaling beyond controlled beta |
 | Documentation | Ready for beta | `README.md`, `LAUNCH_READINESS.md`, and `docs/architecture/*` now describe the current backend in-process layout runtime and operator baseline | Long-form feature docs may still include historical planning notes |
@@ -35,10 +35,10 @@ Next: Close out Phase 5 hardening and conduct final UAT.
 - Upload validation helper with MIME magic-byte checks, max size, Pillow verify, and storage quota integration.
 - Rate limiting helpers for authenticated heavy actions and public endpoints.
 - PostHog wiring for frontend pageviews and some launch/landing events.
-- Internal LLM metrics endpoint protected by `INTERNAL_METRICS_TOKEN`.
+- Internal LLM metrics endpoint protected by admin identity by default; `INTERNAL_METRICS_TOKEN` exists only as an optional transition fallback when explicitly enabled.
 - `ai_usage_events` audit ledger for AI usage, provider/model, cost, status, and refund correlation.
 - Minimal operator dashboard and export feedback capture for paid-beta weekly review.
-- Production/staging startup guardrails for required AI, payment, storage, and internal-token settings.
+- Production/staging startup guardrails for required AI, payment, storage, admin-auth bootstrap, and optional token-fallback settings.
 
 ## Still Mock, Partial, Or Risky
 
@@ -82,7 +82,7 @@ Next: Close out Phase 5 hardening and conduct final UAT.
   - `error_code`
   - `refund_transaction_id`
 - [x] Make credit refund behavior idempotent and queryable without reading ad hoc payload flags. **Completed 2026-05-12:** refund lifecycle is mirrored into `ai_usage_events`; async job refunds check ledger status/refund transaction before issuing another refund. **Hardened 2026-05-12:** added DB-level partial UNIQUE index on `ai_usage_events.refund_transaction_id WHERE NOT NULL` (migration `d1e2f3a4b5c6`) so concurrent double-refund is blocked at the DB constraint layer, not only application layer. Worker catches `IntegrityError` and logs a warning without re-raising. Legacy `_refunded` flags remain only as backward-compatible markers.
-- [x] Build minimal operator dashboard with users, AI jobs, credit transactions, payments, cost summary, and feedback. **Completed 2026-05-12:** added token-protected `/api/internal/operator-summary` and `/operator` dashboard for users, job status, AI usage/cost, credits, storage payments, recent failures/refunds, and export feedback.
+- [x] Build minimal operator dashboard with users, AI jobs, credit transactions, payments, cost summary, and feedback. **Completed 2026-05-12, hardened 2026-05-15:** `/api/internal/operator-summary` and `/operator` now default to admin-session auth; shared token fallback is transitional only and disabled by default.
 - [x] Add export feedback capture: "hasil ini membantu?" with `design_id`, `job_id`, `user_id`, rating, and free-text note. **Completed 2026-05-12:** added `design_feedback` table, `/api/designs/export-feedback`, editor post-export feedback UI, operator feedback summary, and editor wiring for the last applied `job_id`.
 - [x] Review every `UploadFile` endpoint for `validate_uploaded_image`, max size, quota, and rate limit consistency. **Completed 2026-05-12:** see `docs/upload-security-audit.md`; hardened brand-guidelines PDF upload with 10MB and magic-byte validation plus action rate limiting.
 - [x] Add production guardrails to fail loudly when required AI/payment/storage env vars are missing. **Completed 2026-05-12:** backend startup validates required settings when `ENVIRONMENT=staging`, `ENVIRONMENT=production`, or `REQUIRE_PRODUCTION_SECRETS=true`.
@@ -109,7 +109,7 @@ Next: Close out Phase 5 hardening and conduct final UAT.
 - [x] Give beta users initial free credits and expose remaining credits clearly.
 - [x] Add an authoritative export event that does not depend on feedback submission.
 - [x] Pull or mirror `visitor_to_signup` from backend analytics into the weekly operator review.
-- [ ] Replace shared operator token storage with session/role-based admin access before adding non-founder operators.
+- [x] Replace shared operator token storage with session/role-based admin access before adding non-founder operators. **Completed 2026-05-15:** internal endpoints now require admin identity by default; optional internal-token fallback is disabled by default and gated by `ALLOW_INTERNAL_TOKEN_FALLBACK=true`.
 - [x] Add weekly beta review dashboard/query. **Completed 2026-05-12:** internal `/api/internal/operator-summary` now includes `weekly_beta_review` funnel/cost block; operational query pack documented in `docs/weekly-beta-review-dashboard.md`.
   - visitor to signup
   - signup to first design
@@ -178,7 +178,7 @@ Acceptance criteria:
 - Backend: `BetaAllowlist` model with email/code entry_type, status, usage tracking; `beta_allowlist_service.py` with check/create/update/list functions
 - Gating: `register()` endpoint validates allowlist when `BETA_GATING_ENABLED=true`; conditional credit grants via `allowlist.initial_credits_grant`
 - Tracking: `user.invite_source` field records signup method (email_allowlist, code_allowlist, credentials); operator-summary shows `signups_by_invite_source_7d` breakdown
-- Operator APIs: POST/GET/PATCH/GET stats endpoints under `/api/internal/beta-allowlist/*` (require internal token)
+- Operator APIs: POST/GET/PATCH/GET stats endpoints under `/api/internal/beta-allowlist/*` (require admin auth by default; optional token fallback only when explicitly enabled)
 - Support: `/docs/beta-support-runbook.md` with 5 major incident types (signup failure, failed generation, stuck payment, export failure, provider outage)
 - Migrations: `f2e8d7c6b5a4` creates beta_allowlist table + invite_source column
 - Frontend: Register page now accepts optional `invite_code` parameter
@@ -240,7 +240,7 @@ Current closeout note:
 - Final functional caveats resolved: "general" channel template display is unblocked, users can explicitly "Lanjut Tanpa Template", and backend generation now consumes `template_id` in both synchronous and Celery worker paths to inject specific `prompt_suffix` instructions.
 - Phase 4 is now officially CLOSED. Next steps should focus on UAT and Phase 5 operator hardening.
 
-### Phase 5: Operator And Security Hardening (Week 5-6)
+### Phase 5: Operator And Security Hardening (Week 5-6) ✅ COMPLETE
 
 Goal: make internal operations safe enough for more than one founder/operator.
 
@@ -252,10 +252,18 @@ Goal: make internal operations safe enough for more than one founder/operator.
 
 Acceptance criteria:
 
-- Operator access is tied to a real admin identity, not a pasted shared token.
-- Internal dashboards are not exposed to normal users.
-- Legacy runtime references clearly say inactive/deprecated.
-- Asset privacy and retention risks have a documented owner and schedule.
+- Operator access is tied to a real admin identity, not a pasted shared token. ✅
+- Internal dashboards are not exposed to normal users. ✅
+- Legacy runtime references clearly say inactive/deprecated. ✅
+- Asset privacy and retention risks have a documented owner and schedule. ✅
+
+Completion evidence:
+
+- `users.role` added with migration and admin helper (`role == admin` or email in `OPERATOR_ADMIN_EMAILS`).
+- `/api/internal/*` now enforces admin identity; unauthenticated requests return `401`, non-admin authenticated requests return `403`.
+- `/operator` no longer stores shared token in browser storage and now uses NextAuth session bearer auth.
+- Asset decision and retention schedule documented in `docs/launch/2026-05-15-phase-5-asset-policy.md`.
+- Phase 5 closeout captured in `docs/launch/2026-05-15-phase-5-closeout.md`.
 
 ## Beta Metrics Targets
 

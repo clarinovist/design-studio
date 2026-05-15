@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     # Auth
     NEXTAUTH_SECRET: str = ""
+    ALLOW_DEV_AUTH_BYPASS: bool = False
 
     # LLM
     OPENROUTER_API_KEY: str = ""
@@ -63,6 +64,8 @@ class Settings(BaseSettings):
 
     # Optional extra CA bundle for internal HTTPS assets/services.
     INTERNAL_CA_BUNDLE_PATH: str = ""
+    OPERATOR_ADMIN_EMAILS: str = ""
+    ALLOW_INTERNAL_TOKEN_FALLBACK: bool = False
     INTERNAL_METRICS_TOKEN: str = ""
 
     model_config = SettingsConfigDict(
@@ -94,8 +97,9 @@ def missing_required_runtime_settings(config: Settings = settings) -> list[str]:
         "S3_ACCESS_KEY": config.S3_ACCESS_KEY,
         "S3_SECRET_KEY": config.S3_SECRET_KEY,
         "S3_PUBLIC_URL": config.S3_PUBLIC_URL,
-        "INTERNAL_METRICS_TOKEN": config.INTERNAL_METRICS_TOKEN,
     }
+    if config.ALLOW_INTERNAL_TOKEN_FALLBACK:
+        required["INTERNAL_METRICS_TOKEN"] = config.INTERNAL_METRICS_TOKEN
     if config.STORAGE_PAYMENT_ENABLED or config.CREDIT_PAYMENT_ENABLED:
         required.update(
             {

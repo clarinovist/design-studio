@@ -3,25 +3,86 @@ from unittest.mock import AsyncMock
 
 from fastapi.testclient import TestClient
 
+from app.api.deps import get_optional_current_user
 from app.core.database import get_db
 from app.main import app
+from app.models.user import User
 
 client = TestClient(app)
 
 
-def test_internal_llm_metrics_requires_configured_token(monkeypatch):
-    monkeypatch.setattr("app.api.internal_metrics.settings.INTERNAL_METRICS_TOKEN", "")
+def _override_optional_user(role: str = "admin", email: str = "admin@example.com"):
+    async def _override():
+        return User(
+            email=email,
+            name="Operator",
+            role=role,
+            provider="credentials",
+            credits_remaining=0,
+        )
+
+    return _override
+
+
+def test_internal_llm_metrics_requires_auth_when_fallback_off(monkeypatch):
+    monkeypatch.setattr("app.api.internal_metrics.settings.ALLOW_INTERNAL_TOKEN_FALLBACK", False)
     response = client.get("/api/internal/llm-metrics")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
-def test_internal_llm_metrics_requires_header(monkeypatch):
+def test_internal_llm_metrics_rejects_x_user_email_admin_bypass(monkeypatch):
+    monkeypatch.setattr("app.api.internal_metrics.settings.ALLOW_INTERNAL_TOKEN_FALLBACK", False)
+    monkeypatch.setattr("app.api.deps.settings.ENVIRONMENT", "production")
+    monkeypatch.setattr("app.api.deps.settings.ALLOW_DEV_AUTH_BYPASS", True)
+    monkeypatch.setattr("app.api.deps.settings.OPERATOR_ADMIN_EMAILS", "admin@example.com")
+
+    response = client.get(
+        "/api/internal/llm-metrics",
+        headers={"X-User-Email": "admin@example.com"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_internal_llm_metrics_forbidden_for_non_admin(monkeypatch):
+    monkeypatch.setattr("app.api.internal_metrics.settings.ALLOW_INTERNAL_TOKEN_FALLBACK", False)
+    app.dependency_overrides[get_optional_current_user] = _override_optional_user(role="user")
+    try:
+        response = client.get("/api/internal/llm-metrics")
+        assert response.status_code == 403
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_internal_llm_metrics_returns_snapshot_for_admin(monkeypatch):
+    monkeypatch.setattr("app.api.internal_metrics.settings.ALLOW_INTERNAL_TOKEN_FALLBACK", False)
+    app.dependency_overrides[get_optional_current_user] = _override_optional_user(role="admin")
+    try:
+        with patch("app.api.internal_metrics.get_llm_metrics_snapshot") as mock_snapshot:
+            mock_snapshot.return_value = {
+                "available": True,
+                "events": {"llm.primary.rate_limited": 2},
+                "models": {"llm.primary.rate_limited": {"openrouter/deepseek/deepseek-v4-flash": 2}},
+            }
+
+            response = client.get("/api/internal/llm-metrics")
+
+        assert response.status_code == 200
+        assert response.json()["available"] is True
+        assert response.json()["events"]["llm.primary.rate_limited"] == 2
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_internal_llm_metrics_requires_header_when_fallback_enabled(monkeypatch):
+    monkeypatch.setattr("app.api.internal_metrics.settings.ALLOW_INTERNAL_TOKEN_FALLBACK", True)
     monkeypatch.setattr("app.api.internal_metrics.settings.INTERNAL_METRICS_TOKEN", "secret-token")
     response = client.get("/api/internal/llm-metrics")
     assert response.status_code == 401
 
 
-def test_internal_llm_metrics_returns_snapshot_with_valid_token(monkeypatch):
+def test_internal_llm_metrics_returns_snapshot_with_valid_token_fallback(monkeypatch):
+    monkeypatch.setattr("app.api.internal_metrics.settings.ALLOW_INTERNAL_TOKEN_FALLBACK", True)
     monkeypatch.setattr("app.api.internal_metrics.settings.INTERNAL_METRICS_TOKEN", "secret-token")
     with patch("app.api.internal_metrics.get_llm_metrics_snapshot") as mock_snapshot:
         mock_snapshot.return_value = {
@@ -40,14 +101,15 @@ def test_internal_llm_metrics_returns_snapshot_with_valid_token(monkeypatch):
     assert response.json()["events"]["llm.primary.rate_limited"] == 2
 
 
-def test_operator_summary_requires_internal_token(monkeypatch):
-    monkeypatch.setattr("app.api.internal_metrics.settings.INTERNAL_METRICS_TOKEN", "secret-token")
+def test_operator_summary_requires_admin_auth(monkeypatch):
+    monkeypatch.setattr("app.api.internal_metrics.settings.ALLOW_INTERNAL_TOKEN_FALLBACK", False)
     response = client.get("/api/internal/operator-summary")
     assert response.status_code == 401
 
 
 def test_operator_summary_returns_paid_beta_snapshot(monkeypatch):
-    monkeypatch.setattr("app.api.internal_metrics.settings.INTERNAL_METRICS_TOKEN", "secret-token")
+    monkeypatch.setattr("app.api.internal_metrics.settings.ALLOW_INTERNAL_TOKEN_FALLBACK", False)
+    app.dependency_overrides[get_optional_current_user] = _override_optional_user(role="admin")
 
     async def override_db():
         yield object()
@@ -104,10 +166,7 @@ def test_operator_summary_returns_paid_beta_snapshot(monkeypatch):
                 },
             }
 
-            response = client.get(
-                "/api/internal/operator-summary",
-                headers={"X-Internal-Token": "secret-token"},
-            )
+            response = client.get("/api/internal/operator-summary")
 
         assert response.status_code == 200
         data = response.json()

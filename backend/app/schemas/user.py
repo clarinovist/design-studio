@@ -42,6 +42,11 @@ class UserResponse(BaseModel):
     name: str = Field(
         ..., description="User's full name", json_schema_extra={"example": "Siti Rahma"}
     )
+    role: str = Field(
+        "user",
+        description="User role used for authorization checks",
+        json_schema_extra={"example": "admin"},
+    )
     avatar_url: Optional[str] = Field(
         None,
         description="URL to user's avatar image",
@@ -83,6 +88,7 @@ class UserResponse(BaseModel):
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "email": "siti@example.com",
                 "name": "Siti Rahma",
+                "role": "user",
                 "avatar_url": "https://example.com/avatar.jpg",
                 "credits_remaining": 25,
                 "plan_tier": "starter",

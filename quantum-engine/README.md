@@ -1,6 +1,8 @@
+# ARCHIVED — Not Part of Active Runtime
+
 # ⚛️ Quantum Layout Engine
 
-Status: archived/reference only.
+Status: archived/reference only. This folder is not used by the active Design Studio runtime or Docker Compose stack.
 
 Service ini tidak lagi menjadi bagian dari runtime aktif Design Studio. Optimasi layout sekarang berjalan in-process di backend, dan folder ini dipertahankan hanya untuk referensi sejarah, eksperimen lama, dan tes legacy.
 
@@ -10,9 +12,9 @@ Service ini tidak lagi menjadi bagian dari runtime aktif Design Studio. Optimasi
 - **Quantum SDK**: pyQPanda (Origin Quantum)
 - **Solver**: QAOA via CPUQVM (simulator)
 
-## Quick Start
+## Quick Start (Historical Reference)
 
-Gunakan bagian ini hanya jika kamu memang perlu menjalankan legacy service untuk eksperimen lokal atau investigasi historis.
+Gunakan bagian ini hanya jika kamu memang perlu menjalankan legacy service untuk eksperimen lokal atau investigasi historis. Jangan treat langkah ini sebagai setup runtime aktif.
 
 ```bash
 # Build & run via Docker (legacy only)

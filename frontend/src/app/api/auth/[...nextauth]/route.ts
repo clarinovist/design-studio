@@ -10,6 +10,8 @@ interface ExtendedSession extends Session {
     user?: Session["user"] & {
         id?: string;
         provider?: string;
+        role?: string;
+        isAdmin?: boolean;
     };
     accessToken?: string;
     error?: string;
@@ -18,6 +20,8 @@ interface ExtendedSession extends Session {
 interface ExtendedJWT extends JWT {
     id?: string;
     provider?: string;
+    role?: string;
+    isAdmin?: boolean;
     accessToken?: string;
     refreshToken?: string;
     accessTokenExpires?: number;
@@ -104,6 +108,8 @@ export const authOptions: NextAuthOptions = {
                             id: data.id,
                             email: data.email,
                             name: data.name,
+                            role: data.role,
+                            isAdmin: data.role === "admin",
                             avatar_url: data.avatar_url,
                             accessToken: data.access_token,
                             refreshToken: data.refresh_token
@@ -144,16 +150,20 @@ export const authOptions: NextAuthOptions = {
                     jwtToken.accessToken = jwt;
                     jwtToken.provider = "google";
                     jwtToken.id = user.id;
+                    jwtToken.role = undefined;
+                    jwtToken.isAdmin = undefined;
                     jwtToken.accessTokenExpires = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days
                     jwtToken.error = undefined;
                 } else if (account.provider === "credentials") {
                     // This is 'user' returned from authorize
-                    const credUser = user as { id?: string; accessToken?: string; refreshToken?: string };
+                    const credUser = user as { id?: string; role?: string; isAdmin?: boolean; accessToken?: string; refreshToken?: string };
                     jwtToken.accessToken = credUser.accessToken;
                     jwtToken.refreshToken = credUser.refreshToken;
                     jwtToken.accessTokenExpires = Date.now() + 60 * 60 * 1000; // 1 hour default
                     jwtToken.provider = "credentials";
                     jwtToken.id = user.id;
+                    jwtToken.role = credUser.role;
+                    jwtToken.isAdmin = credUser.isAdmin;
                     jwtToken.error = undefined;
                 }
                 return jwtToken;
@@ -185,6 +195,8 @@ export const authOptions: NextAuthOptions = {
             if (extSession.user) {
                 extSession.user.id = extToken.id;
                 extSession.user.provider = extToken.provider;
+                extSession.user.role = extToken.role;
+                extSession.user.isAdmin = extToken.isAdmin;
             }
             
             extSession.accessToken = extToken.accessToken;

@@ -75,6 +75,11 @@ class AuthResponse(BaseModel):
         description="User's full name",
         json_schema_extra={"example": "Budi Santoso"},
     )
+    role: str = Field(
+        "user",
+        description="User role used for authorization checks",
+        json_schema_extra={"example": "admin"},
+    )
     avatar_url: Optional[str] = Field(
         None,
         description="URL of user's avatar image",
@@ -108,6 +113,7 @@ class AuthResponse(BaseModel):
                 "id": "123e4567-e89b-12d3-a456-426614174000",
                 "email": "budi@example.com",
                 "name": "Budi Santoso",
+                "role": "user",
                 "avatar_url": "https://example.com/avatar.jpg",
                 "credits_remaining": 10,
                 "plan_tier": "starter",

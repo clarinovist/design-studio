@@ -62,3 +62,18 @@ Secara historis `validate_uploaded_image` telah diperbaiki dan distandardisasi d
 - `backend/app/api/designs_routers/media.py`
 
 Saat menambahkan _endpoint router_ baru, harap *copy-paste* pola yang sudah berlaku dalam direktori di atas supaya standar keamanan terjaga secara platform wide.
+
+## 5. Internal Operator API Authorization
+
+**Masalah:** Shared internal token (`X-Internal-Token`) yang disalin antar operator berisiko bocor, sulit diaudit, dan tidak terikat ke identitas pengguna.
+
+**Solusi & Aturan:**
+- Semua endpoint internal operator (`/api/internal/*`) wajib menggunakan identity-based auth melalui user login dan role check admin.
+- Admin valid jika `users.role == "admin"` atau email ada di `OPERATOR_ADMIN_EMAILS` untuk bootstrap founder/operator awal.
+- Request tanpa auth harus `401`; user non-admin harus `403`.
+- `X-Internal-Token` hanya boleh dipakai sebagai fallback transisi saat `ALLOW_INTERNAL_TOKEN_FALLBACK=true` (default wajib `false`).
+
+Checklist implementasi:
+- Gunakan dependency admin guard di backend, bukan validasi role dari payload client.
+- Jangan simpan shared internal token di browser storage frontend.
+- Operator dashboard frontend harus mengirim bearer token session (`Authorization: Bearer ...`) ke backend.
