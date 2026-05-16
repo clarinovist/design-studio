@@ -30,7 +30,7 @@ LLM_VISION_FALLBACK = _env(
 # ═══════════════════════════════════════════════════════════════
 LLM_BG_SUGGEST_PRIMARY = _env(
     "AI_MODEL_LLM_BG_SUGGEST_PRIMARY",
-    "ollama/deepseek-v4-flash",
+    "ollama/qwen3-coder-next",
 )
 
 # ═══════════════════════════════════════════════════════════════
@@ -38,11 +38,11 @@ LLM_BG_SUGGEST_PRIMARY = _env(
 # ═══════════════════════════════════════════════════════════════
 LLM_BRAND_KIT_PRIMARY = _env(
     "AI_MODEL_LLM_BRAND_KIT_PRIMARY",
-    "ollama/deepseek-v4-flash",
+    "ollama/qwen3-coder-next",
 )
 LLM_BRAND_KIT_FALLBACK = _env(
     "AI_MODEL_LLM_BRAND_KIT_FALLBACK",
-    "openrouter/qwen/qwen3.6-flash",
+    "ollama/mistral-large-3:675b",
 )
 
 # ═══════════════════════════════════════════════════════════════
@@ -50,11 +50,11 @@ LLM_BRAND_KIT_FALLBACK = _env(
 # ═══════════════════════════════════════════════════════════════
 LLM_REASONING_PRIMARY = _env(
     "AI_MODEL_LLM_REASONING_PRIMARY",
-    "ollama/deepseek-v4-flash",
+    "ollama/qwen3-coder-next",
 )
 LLM_REASONING_FALLBACK = _env(
     "AI_MODEL_LLM_REASONING_FALLBACK",
-    "openrouter/qwen/qwen3.6-flash",
+    "ollama/mistral-large-3:675b",
 )
 
 
