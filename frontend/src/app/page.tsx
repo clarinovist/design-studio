@@ -4,16 +4,16 @@ import { Suspense } from "react";
 import LandingPageClient from "./LandingPageClient";
 
 export const metadata: Metadata = {
-  title: "SmartDesign Studio — Desain AI untuk UMKM | Daftar Gratis + 100 Kredit",
+  title: "SmartDesign Studio — Desain AI untuk UMKM | Ajukan Akses Beta + 100 Kredit",
   description:
-    "Dari chat ke desain siap upload dalam 2 menit. 100 kredit gratis untuk pendaftar pertama. Platform AI untuk desain produk, foto katalog, dan konten promo UMKM Indonesia.",
+    "Upload foto produk, jawab brief singkat, lalu dapat desain siap upload. Ajukan akses beta bertahap untuk seller UMKM dan dapat 100 kredit saat akun beta aktif.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "SmartDesign Studio — Desain AI untuk UMKM | Daftar Gratis + 100 Kredit",
+    title: "SmartDesign Studio — Desain AI untuk UMKM | Ajukan Akses Beta + 100 Kredit",
     description:
-      "Chat ke desain siap upload dalam 2 menit. Dapat 100 kredit gratis + PDF 30 ide konten UMKM. AI Interview, editor drag-drop, brand kit, format pas untuk Shopee & Instagram.",
+      "Upload foto produk, jawab brief singkat, lalu dapat desain siap upload. Ajukan akses beta bertahap dan dapat 100 kredit saat akun beta aktif + bonus PDF ide konten UMKM.",
     url: "/",
     siteName: "SmartDesign Studio",
     locale: "id_ID",
@@ -21,9 +21,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SmartDesign Studio — Desain AI untuk UMKM | Daftar Gratis + 100 Kredit",
+    title: "SmartDesign Studio — Desain AI untuk UMKM | Ajukan Akses Beta + 100 Kredit",
     description:
-      "Chat ke desain siap upload dalam 2 menit. 100 kredit gratis untuk pendaftar pertama. Cocok untuk Shopee, Tokopedia, Instagram.",
+      "Ajukan akses beta SmartDesign untuk seller UMKM. Saat akun beta aktif, dapat 100 kredit awal. Cocok untuk Shopee, Tokopedia, Instagram.",
   },
 };
 

@@ -16,7 +16,7 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 bg-purple-500/10 rounded-full px-4 py-1.5 mb-4 border border-purple-500/30">
             <Lock className="text-purple-400 h-4 w-4" />
-            <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">Harga Terkunci untuk Early Adopter</span>
+            <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">Harga Pembuka untuk Kuota Batch Pertama</span>
           </div>
           <h2 className="text-4xl md:text-5xl font-bold text-white mt-4 mb-6">Bayar Seperti Pulsa HP</h2>
           <p className="text-slate-400 max-w-2xl mx-auto text-lg">
@@ -147,13 +147,13 @@ export function PricingSection({ onJoinWaitlist }: PricingSectionProps) {
                   onClick={() => onJoinWaitlist("pricing_section")}
                   className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold text-lg hover:from-purple-500 hover:to-blue-500 transition-all shadow-lg hover:shadow-purple-500/25 flex items-center justify-center gap-2"
                 >
-                  <span>Daftar Gratis Dulu</span>
+                  <span>Ajukan Akses Beta Dulu</span>
                   <ArrowRight className="w-5 h-5" />
                 </button>
               )}
 
               <p className="text-center text-xs text-slate-400 mt-3">
-                Early adopter lock harga spesial. Setelah launch, harga naik 30%.
+                Early adopter dapat harga pembuka selama kuota batch pertama. Setelah launch, harga bisa naik 30%.
               </p>
 
               <p className="text-center text-xs text-slate-500 mt-2">

@@ -7,7 +7,7 @@ const OBJECTIONS = [
   },
   {
     q: "Nanti pas launch mahal ya?",
-    a: "Early adopter dapat harga terkunci selamanya. Paket Pro Rp 50.000 untuk 500 kredit — lebih murah dari 1x sewa freelancer (Rp 150-250K). Dan nggak ada langganan wajib."
+    a: "Early adopter dapat harga pembuka selama kuota batch pertama. Paket Pro Rp 50.000 untuk 500 kredit — lebih murah dari 1x sewa freelancer (Rp 150-250K). Dan nggak ada langganan wajib."
   },
   {
     q: "Saya nggak jago teknologi...",
@@ -23,7 +23,7 @@ const OBJECTIONS = [
   },
   {
     q: "Nanti model AI-nya ganti lagi...",
-    a: "Justru itu keunggulan kami: model-agnostic. Saat ini 3 model premium (GPT Image 2, Flux, Gemini) — terus evaluasi model baru. Kalau ada yang lebih bagus? Langsung plug. Kamu nggak perlu peduli, selalu dapat yang terbaik."
+    a: "Justru itu keunggulan kami: model-agnostic. Saat ini 3 model premium (GPT Image 2, Flux, Gemini) — dan kami evaluasi model baru secara berkala. Kamu nggak perlu ribet pilih model satu-satu; kami bantu arahkan sesuai kebutuhan workflow kamu."
   },
 ];
 

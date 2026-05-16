@@ -164,7 +164,7 @@ export default function LandingPage() {
       "price": "0",
       "priceCurrency": "IDR",
     },
-    "description": "Platform AI untuk workflow desain UMKM — daftar gratis dan dapat 100 kredit + bonus PDF ide konten."
+    "description": "Platform AI untuk workflow desain UMKM — ajukan akses beta dan dapat 100 kredit saat akun beta aktif + bonus PDF ide konten."
   };
 
   return (
@@ -225,7 +225,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-3">AI Desain Katalog & Konten Promo</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">
-                    Ceritakan produkmu — AI yang mikirin headline, warna, layout, dan caption. Hasilnya 3 variasi desain siap pilih dalam 2 menit.
+                    Ceritakan produkmu — AI bantu susun headline, warna, layout, dan caption. Hasilnya 3 variasi desain siap pilih dalam hitungan menit.
                   </p>
                 </div>
 
@@ -235,7 +235,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-3">Edit Foto Produk AI & Penghapus Latar</h3>
                   <p className="text-slate-400 text-sm leading-relaxed">
-                    Foto HP biasa jadi foto katalog profesional. Hapus background, ganti suasana, retouch, upscale — semua dalam 3 detik per foto.
+                    Foto HP biasa jadi foto katalog profesional. Hapus background, ganti suasana, retouch, upscale — umumnya selesai dalam beberapa detik per foto.
                   </p>
                 </div>
 
@@ -311,15 +311,15 @@ export default function LandingPage() {
                style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="flex flex-col"
 >              <span className="text-white text-sm font-bold"
->Daftar Gratis</span
+>Ajukan Akses Beta</span
 >              <span className="text-slate-400 text-xs"
->100 kredit + PDF bonus</span
+>100 kredit saat akun beta aktif</span
 >            </div
 >            <button
               onClick={() => handleJoinWaitlist("sticky_mobile")}
               className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap"
             >
-              Ambil Slot
+              Ajukan Akses
             </button>
           </div>
 
@@ -330,7 +330,7 @@ export default function LandingPage() {
                 <div className="inline-flex items-center gap-2 bg-yellow-500/10 rounded-full px-4 py-1.5 mb-6 border border-yellow-500/30">
                   <Clock className="text-yellow-400 h-4 w-4" />
                   <span className="text-xs font-bold text-yellow-300"
->Slot Terbatas — Batch Pertama Tutup Setelah 500 Pendaftar</span
+>Kuota Terbatas — Batch Pertama Maksimal 500 Seller</span
 >                </div>
 
                 <h2 className="text-3xl md:text-5xl font-bold text-white leading-tight mb-4">
@@ -339,14 +339,17 @@ export default function LandingPage() {
                 <p className="text-slate-300 text-base md:text-lg max-w-3xl mx-auto mb-8">
                   Feed kompetitor makin rapi. Pelanggan makin pilih-pilih. SmartDesign dibuat supaya kamu bisa tampil profesional tanpa bingung pilih model AI. Tanpa belajar desain. Tanpa sewa desainer.
                 </p>
+                <p className="text-slate-400 text-sm max-w-2xl mx-auto mb-8">
+                  Kalau proses AI gagal karena error sistem dan kredit sudah terpotong, saldo akan dikembalikan ke akun atau dibantu tim support saat beta.
+                </p>
 
                 {/* Incentive Stack */}
                 <div className="flex flex-wrap justify-center gap-3 mb-8"
 >                  {[
-                    { icon: Gift, text: "100 Kredit Gratis" },
+                    { icon: Gift, text: "100 Kredit Saat Akses Beta Aktif" },
                     { icon: CheckCircle2, text: "PDF 30 Ide Konten UMKM" },
                     { icon: CheckCircle2, text: "Akses Prioritas Batch 1" },
-                    { icon: CheckCircle2, text: "Harga Spesial Selamanya" },
+                    { icon: CheckCircle2, text: "Harga Pembuka untuk Kuota Batch Pertama" },
                   ].map(({ icon: Icon, text }) => (
                     <div key={text} className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2"
 >                      <Icon className="w-4 h-4 text-purple-400" />
@@ -361,7 +364,7 @@ export default function LandingPage() {
                     onClick={() => handleJoinWaitlist("final_cta")}
                     className="flex items-center justify-center gap-2 rounded-xl h-14 px-8 bg-gradient-to-r from-purple-600 to-purple-500 text-white font-bold shadow-[0_0_30px_rgba(108,43,238,0.4)] hover:shadow-[0_0_40px_rgba(168,85,247,0.5)] hover:scale-105 transition-all"
                   >
-                    <span>Daftar Gratis Sekarang</span>
+                    <span>Ajukan Akses Beta</span>
                     <ArrowRight className="h-5 w-5" />
                   </button>
                 </div>

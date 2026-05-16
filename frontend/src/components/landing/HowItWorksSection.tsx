@@ -30,7 +30,7 @@ const STEPS = [
   {
     step: "4",
     title: "Generate",
-    description: "AI generate 3 variasi desain. Teks benar. Brand konsisten. Siap edit.",
+    description: "AI generate 3 variasi desain. Headline/caption disiapkan dan bisa kamu edit. Brand lebih konsisten.",
     badgeClass: "bg-pink-500/20",
     textClass: "text-pink-400",
     shadowClass: "shadow-[0_0_15px_rgba(236,72,153,0.3)]",
@@ -53,7 +53,7 @@ export function HowItWorksSection() {
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent"></div>
           <div className="flex flex-col items-center gap-4 text-center">
             <span className="text-purple-400 font-semibold tracking-wider uppercase text-sm">Dari Cerita ke Desain Siap Upload</span>
-            <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight text-white">5 Langkah. 2 Menit. Tanpa Belajar Desain.</h2>
+            <h2 className="text-4xl md:text-5xl font-bold leading-tight tracking-tight text-white">5 Langkah. Hitungan Menit. Tanpa Belajar Desain.</h2>
             <p className="text-slate-400 text-lg max-w-[600px]">Ceritakan idemu dalam bahasa Indonesia - kami yang translate ke bahasa AI, pilih model terbaik, dan generate desain siap upload.</p>
           </div>
 

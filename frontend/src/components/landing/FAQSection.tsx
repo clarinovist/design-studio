@@ -5,12 +5,12 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    question: "Daftar gratis dapat apa aja?",
-    answer: "100 kredit + PDF '30 Ide Konten UMKM Bulan Ini' langsung ke email. 100 kredit cukup buat 2-3 desain pertama tanpa bayar sepeser pun. Nggak perlu kartu kredit. Nggak ada komitmen."
+    question: "Ajukan akses beta dapat apa aja?",
+    answer: "Saat akses beta kamu aktif, kamu dapat 100 kredit awal + PDF '30 Ide Konten UMKM Bulan Ini'. 100 kredit cukup buat 2-3 desain pertama. Tanpa kartu kredit dan tanpa langganan wajib."
   },
   {
     question: "Berapa lama proses edit fotonya?",
-    answer: "Edit standar selesai dalam 3-10 detik. Generate desain dari nol butuh 1-2 menit. Batch edit 50 foto? Sekitar 5 menit. Semua async — kamu bisa tinggal dan dapat notifikasi kalau sudah jadi."
+    answer: "Edit standar umumnya selesai dalam beberapa detik. Generate desain dari nol biasanya hitungan menit. Batch edit 50 foto bisa beberapa menit, tergantung antrean job. Semua async — kamu bisa lanjut kerja dan dapat notifikasi saat selesai."
   },
   {
     question: "Format file apa saja yang didukung?",
@@ -34,8 +34,12 @@ const faqs = [
   },
   {
     question: "Apa bedanya model AI Basic, Pro, dan Ultra?",
-    answer: "Basic (Flux Schnell): cepat + hemat. Cocok untuk konten harian. Pro (Flux Pro): detail lebih tajam, lighting lebih natural. Ultra (GPT Image 2): kualitas tertinggi, cocok untuk campaign flagship. Kamu pilih sesuai budget dan kebutuhan."
-  }
+    answer: "Basic (Flux Schnell): cepat + hemat untuk konten harian. Pro (Flux Pro): detail lebih tajam untuk campaign penting. Ultra (GPT Image 2): kualitas tertinggi untuk materi flagship. Kamu pilih sesuai kebutuhan, dan kami terus evaluasi model terbaru."
+  },
+  {
+    question: "Kalau proses AI gagal, kredit saya gimana?",
+    answer: "Kalau proses AI gagal karena error sistem SmartDesign, kredit yang terpakai akan dikembalikan otomatis dan bisa dilihat di histori kredit. Kalau ada kasus khusus saat beta, tim support bantu cek dan selesaikan."
+  },
 ];
 
 export function FAQSection() {

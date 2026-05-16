@@ -31,7 +31,7 @@ export function LandingHeader({
               onClick={() => onJoinWaitlist("header_desktop")}
               className="rounded-lg h-10 px-5 bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold shadow-[0_0_20px_rgba(108,43,238,0.5)] transition-all flex items-center gap-2"
             >
-              Daftar Gratis
+              Ajukan Akses Beta
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -50,7 +50,7 @@ export function LandingHeader({
             onClick={() => { onJoinWaitlist("header_mobile"); setMobileMenuOpen(false); }}
             className="rounded-lg h-12 bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all flex items-center justify-center gap-2"
           >
-            Daftar Gratis — Dapat 100 Kredit
+            Ajukan Akses Beta
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>

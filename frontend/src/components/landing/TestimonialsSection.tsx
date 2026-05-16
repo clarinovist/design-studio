@@ -43,10 +43,10 @@ export function TestimonialsSection({ waitlistCount }: TestimonialsSectionProps)
 
         <div className="text-center mb-10 px-4">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            Yang Sudah Coba Bilang Gini
+            Yang Kami Validasi di Beta Ini
           </h2>
           <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-            Pengalaman awal dari UMKM yang udah tes workflow SmartDesign sebelum launch resmi.
+            Contoh feedback ini bersifat ilustrasi internal sampai testimoni publik yang disetujui tersedia.
           </p>
         </div>
         <TestimonialCarousel />

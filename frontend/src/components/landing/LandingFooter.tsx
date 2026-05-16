@@ -37,13 +37,13 @@ export function LandingFooter({
             <span className="font-bold text-white text-xl tracking-tight">SmartDesign Studio</span>
           </div>
           <p className="text-slate-400 max-w-sm">
-            Platform desain AI untuk UMKM Indonesia — dari cerita ke desain siap upload dalam 2 menit.
+            Platform desain AI untuk UMKM Indonesia — upload foto produk, jawab brief singkat, lalu dapat desain siap upload.
           </p>
 
           <div className="mt-2">
-            <p className="mb-1 font-bold text-white text-lg">Ambil 100 Kredit Gratis + Bonus PDF</p>
+            <p className="mb-1 font-bold text-white text-lg">Ajukan Akses Beta + Bonus PDF</p>
             <p className="mb-3 text-sm text-slate-400">
-              Daftar sekarang dan langsung dapat 100 kredit (cukup untuk 2-3 desain pertama) + PDF &quot;30 Ide Konten UMKM Bulan Ini&quot;.
+              Beta dibuka bertahap. Saat akun beta kamu aktif, kamu dapat 100 kredit awal (cukup untuk 2-3 desain pertama) + PDF &quot;30 Ide Konten UMKM Bulan Ini&quot;.
             </p>
 
             {typeof waitlistCount === "number" && waitlistCount > 0 && (
@@ -76,7 +76,7 @@ export function LandingFooter({
               >
                 {waitlistLoading ? "Mengirim..." : (
                   <>
-                    Daftar Gratis
+                    Ajukan Akses Beta
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -86,7 +86,7 @@ export function LandingFooter({
             {waitlistResult && (
               <p className="mt-2 text-xs text-green-400">
                 {waitlistResult.is_new
-                  ? `Berhasil! Posisi waitlist kamu: #${waitlistResult.position}. Cek email untuk bonus PDF.`
+                  ? `Berhasil! Posisi waitlist kamu: #${waitlistResult.position}. Tim kami akan kirim update saat akses beta dibuka untuk kamu.`
                   : `Email sudah terdaftar. Posisi kamu: #${waitlistResult.position}.`}
               </p>
             )}
