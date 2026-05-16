@@ -445,9 +445,9 @@ def call_ollama(model_id: str, contents: list, config: types.GenerateContentConf
     response_failure_logged = False
     try:
         logger.info(f"🧠 [DEV INFO] Resolving prompt via Ollama Cloud: {model_id}")
-        with httpx.Client(timeout=60.0) as client:
+        with httpx.Client(timeout=60.0, follow_redirects=True) as client:
             response = client.post(
-                f"{settings.OLLAMA_BASE_URL}/v1/chat/completions",
+                f"{settings.OLLAMA_BASE_URL}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {settings.OLLAMA_API_KEY}",
                     "Content-Type": "application/json",
@@ -492,7 +492,14 @@ def call_ollama(model_id: str, contents: list, config: types.GenerateContentConf
                 raise KeyError("message")
 
             from types import SimpleNamespace
-            content_text = first_choice["message"].get("content", "")
+            message = first_choice["message"]
+            content_text = message.get("content") or message.get("reasoning", "")
+            if not content_text:
+                _log_failed_provider_response("Ollama Cloud", model_id, response, "empty content and reasoning")
+                response_failure_logged = True
+                raise ValueError("Empty response from Ollama Cloud")
+            if not message.get("content") and message.get("reasoning"):
+                logger.info(f"🧠 [DEV INFO] Ollama Cloud returned reasoning-only response for {model_id}")
 
             usage = res_data.get("usage", {})
             total_tokens = usage.get("total_tokens", "unknown")

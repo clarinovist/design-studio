@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     # LLM
     OPENROUTER_API_KEY: str = ""
     OLLAMA_API_KEY: str = ""
-    OLLAMA_BASE_URL: str = "https://api.ollama.com"
+    OLLAMA_BASE_URL: str = "https://ollama.com/v1"
     GEMINI_API_KEY: str = ""
     QUANTUM_LAYOUT_ENABLED: bool = True
     LLM_MAX_CONCURRENT_PER_MODEL: int = 5
