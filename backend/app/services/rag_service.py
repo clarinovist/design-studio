@@ -27,23 +27,38 @@ async def extract_text_from_pdf(file_bytes: bytes) -> str:
         return ""
 
 async def get_embedding_for_text(text: str) -> List[float]:
-    """Generates an embedding vector for a given text chunk using OpenRouter embeddings."""
+    """Generates an embedding vector for a given text chunk."""
     try:
-        if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
-            raise ValueError("OPENROUTER_API_KEY is not configured")
-
         model_name = EMBEDDING_TEXT_MODEL
-        if model_name.startswith("openrouter/"):
+
+        # Determine endpoint based on model prefix
+        if model_name.startswith("local/"):
+            model_name = model_name.replace("local/", "", 1)
+            endpoint = f"{settings.OLLAMA_LOCAL_URL}/api/embeddings"
+            headers = {"Content-Type": "application/json"}
+        elif model_name.startswith("openrouter/"):
             model_name = model_name.replace("openrouter/", "", 1)
+            if not settings.OPENROUTER_API_KEY:
+                raise ValueError("OPENROUTER_API_KEY is not configured")
+            endpoint = "https://openrouter.ai/api/v1/embeddings"
+            headers = {
+                "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://design-studio.dev",
+            }
+        else:
+            if not settings.OPENROUTER_API_KEY:
+                raise ValueError("No embedding provider configured")
+            endpoint = "https://openrouter.ai/api/v1/embeddings"
+            headers = {
+                "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            }
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                "https://openrouter.ai/api/v1/embeddings",
-                headers={
-                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "https://design-studio.dev",
-                },
+                endpoint,
+                headers=headers,
                 json={"model": model_name, "input": text},
             )
             response.raise_for_status()

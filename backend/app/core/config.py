@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     OLLAMA_API_KEY: str = ""
     OLLAMA_BASE_URL: str = "https://ollama.com/v1"
+    OLLAMA_LOCAL_URL: str = "http://host.docker.internal:11434"
     GEMINI_API_KEY: str = ""
     QUANTUM_LAYOUT_ENABLED: bool = True
     LLM_MAX_CONCURRENT_PER_MODEL: int = 5

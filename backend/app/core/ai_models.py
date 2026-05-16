@@ -142,5 +142,5 @@ FAL_IMAGE_BRIA_FIBO_EDIT = _env(
 # Embeddings
 EMBEDDING_TEXT_MODEL = _env(
     "AI_MODEL_EMBEDDING_TEXT",
-    "openrouter/nomic-ai/nomic-embed-text-v1.5",
+    "local/bge-m3",
 )
