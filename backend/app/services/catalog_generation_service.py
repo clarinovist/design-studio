@@ -348,7 +348,7 @@ def _llm_available() -> bool:
 
 
 def _get_catalog_client():
-    if settings.OPENROUTER_API_KEY:
+if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         return get_genai_client()
     return get_direct_gemini_client()
 

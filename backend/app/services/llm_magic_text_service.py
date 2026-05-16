@@ -94,7 +94,7 @@ async def generate_magic_text_layout(
     from app.schemas.design import MagicTextResponse
     import base64
 
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         import logging
 
         logging.warning("OPENROUTER_API_KEY is missing – returning mock magic text")

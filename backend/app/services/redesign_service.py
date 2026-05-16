@@ -40,7 +40,7 @@ async def analyze_reference_image(image_url: str) -> ReferenceAnalysis:
     Downloads an image from a URL, analyzes it using Gemini Vision,
     and returns structured style parameters.
     """
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         logging.warning("OPENROUTER_API_KEY is missing, returning mock reference analysis")
         return ReferenceAnalysis(
             style_description="A placeholder style due to missing API key.",

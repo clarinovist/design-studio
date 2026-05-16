@@ -29,7 +29,7 @@ async def extract_text_from_pdf(file_bytes: bytes) -> str:
 async def get_embedding_for_text(text: str) -> List[float]:
     """Generates an embedding vector for a given text chunk using OpenRouter embeddings."""
     try:
-        if not settings.OPENROUTER_API_KEY:
+        if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
             raise ValueError("OPENROUTER_API_KEY is not configured")
 
         model_name = EMBEDDING_TEXT_MODEL

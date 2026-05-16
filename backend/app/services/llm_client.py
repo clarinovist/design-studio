@@ -419,6 +419,107 @@ def call_vision_analysis(image_bytes: bytes, prompt: str, *, model: str = "gemin
         return None
 
 
+def call_ollama(model_id: str, contents: list, config: types.GenerateContentConfig = None):
+    """Calls Ollama Cloud with an OpenAI-compatible interface."""
+    if not settings.OLLAMA_API_KEY:
+        logger.error("OLLAMA_API_KEY not found in settings.")
+        return None
+
+    system_instr = getattr(config, "system_instruction", None) if config else None
+    messages = _convert_to_openai_messages(contents, system_instr)
+
+    payload = {
+        "model": model_id,
+        "messages": messages,
+    }
+
+    max_output_tokens = getattr(config, "max_output_tokens", None) if config else None
+    if max_output_tokens is not None:
+        payload["max_tokens"] = max_output_tokens
+
+    # Try to map response_mime_type to response_format if possible
+    if config and getattr(config, "response_mime_type", None) == "application/json":
+        payload["response_format"] = {"type": "json_object"}
+
+    response = None
+    response_failure_logged = False
+    try:
+        logger.info(f"🧠 [DEV INFO] Resolving prompt via Ollama Cloud: {model_id}")
+        with httpx.Client(timeout=60.0) as client:
+            response = client.post(
+                f"{settings.OLLAMA_BASE_URL}/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {settings.OLLAMA_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=payload
+            )
+
+            if response.status_code != 200:
+                _log_failed_provider_response("Ollama Cloud", model_id, response, "non-200 response")
+                response_failure_logged = True
+
+            response.raise_for_status()
+
+            try:
+                res_data = response.json()
+            except ValueError:
+                try:
+                    raw = response.text
+                    cleaned = clean_llm_json_response(raw)
+                    res_data = parse_llm_json(cleaned)
+                    logger.warning("Ollama Cloud returned non-standard JSON, cleaned and parsed successfully.")
+                except Exception as e2:
+                    _log_failed_provider_response("Ollama Cloud", model_id, response, f"invalid JSON response and cleaning failed: {e2}")
+                    response_failure_logged = True
+                    raise
+
+            choices = res_data.get("choices")
+            if not isinstance(choices, list) or not choices:
+                error_val = res_data.get("error")
+                error_msg = _extract_error_message(error_val) if error_val is not None else None
+                log_reason = "missing or empty 'choices' in response"
+                if error_msg:
+                    log_reason += f" | error: {error_msg}"
+                _log_failed_provider_response("Ollama Cloud", model_id, response, log_reason)
+                response_failure_logged = True
+                raise KeyError("choices")
+
+            first_choice = choices[0]
+            if not isinstance(first_choice, dict) or "message" not in first_choice:
+                _log_failed_provider_response("Ollama Cloud", model_id, response, "missing 'message' in first choice")
+                response_failure_logged = True
+                raise KeyError("message")
+
+            from types import SimpleNamespace
+            content_text = first_choice["message"].get("content", "")
+
+            usage = res_data.get("usage", {})
+            total_tokens = usage.get("total_tokens", "unknown")
+            logger.info(f"🪙 [DEV INFO] Ollama Cloud Tokens Used: {total_tokens}")
+
+            mock_res = SimpleNamespace(
+                text=content_text,
+                candidates=[SimpleNamespace(content=SimpleNamespace(parts=[SimpleNamespace(text=content_text)]))]
+            )
+            return mock_res
+    except Exception as e:
+        if response is not None and not response_failure_logged:
+            try:
+                res_data = response.json()
+                error_val = res_data.get("error")
+                error_msg = _extract_error_message(error_val) if error_val is not None else None
+            except Exception:
+                error_msg = None
+            log_reason = f"exception: {type(e).__name__}"
+            if error_msg:
+                log_reason += f" | error: {error_msg}"
+            _log_failed_provider_response("Ollama Cloud", model_id, response, log_reason)
+        elif response is None:
+            logger.error(f"Ollama Cloud call failed ({model_id}) before receiving response: {str(e)}")
+        raise
+
+
 def call_gemini_with_fallback(
     client: genai.Client,
     primary_model: str,
@@ -428,7 +529,7 @@ def call_gemini_with_fallback(
 ):
     """
     Calls the primary model and retries with fallback when needed.
-    Supports OpenRouter and Direct Gemini based on model prefix.
+    Supports Ollama Cloud, OpenRouter and Direct Gemini based on model prefix.
     """
 
     def _do_call(
@@ -448,7 +549,12 @@ def call_gemini_with_fallback(
                 raise ModelConcurrencyLimitError(model_id)
 
         try:
-            if model_id.startswith("openrouter/"):
+            if model_id.startswith("ollama/"):
+                actual_id = model_id.replace("ollama/", "", 1)
+                logger.info(f"🧠 [DEV INFO] Resolving prompt via {label} LLM (Ollama Cloud): {actual_id}")
+                return call_ollama(model_id=actual_id, contents=contents, config=config)
+
+            elif model_id.startswith("openrouter/"):
                 actual_id = model_id.replace("openrouter/", "", 1)
                 logger.info(f"🧠 [DEV INFO] Resolving prompt via {label} LLM (OpenRouter): {actual_id}")
                 return call_openrouter(model_id=actual_id, contents=contents, config=config)

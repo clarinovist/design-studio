@@ -211,7 +211,7 @@ async def regenerate_carousel_slide(
         request.instruction,
     )
 
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         return fallback
 
     prompt = {

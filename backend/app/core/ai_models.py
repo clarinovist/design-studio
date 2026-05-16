@@ -18,7 +18,7 @@ def _env(name: str, default: str) -> str:
 # ═══════════════════════════════════════════════════════════════
 LLM_VISION_PRIMARY = _env(
     "AI_MODEL_LLM_VISION_PRIMARY",
-    "openrouter/google/gemma-4-31b-it",
+    "ollama/qwen3-vl:235b-instruct",
 )
 LLM_VISION_FALLBACK = _env(
     "AI_MODEL_LLM_VISION_FALLBACK",
@@ -30,7 +30,7 @@ LLM_VISION_FALLBACK = _env(
 # ═══════════════════════════════════════════════════════════════
 LLM_BG_SUGGEST_PRIMARY = _env(
     "AI_MODEL_LLM_BG_SUGGEST_PRIMARY",
-    "openrouter/deepseek/deepseek-v4-flash",
+    "ollama/deepseek-v4-flash",
 )
 
 # ═══════════════════════════════════════════════════════════════
@@ -38,7 +38,7 @@ LLM_BG_SUGGEST_PRIMARY = _env(
 # ═══════════════════════════════════════════════════════════════
 LLM_BRAND_KIT_PRIMARY = _env(
     "AI_MODEL_LLM_BRAND_KIT_PRIMARY",
-    "openrouter/deepseek/deepseek-v4-flash",
+    "ollama/deepseek-v4-flash",
 )
 LLM_BRAND_KIT_FALLBACK = _env(
     "AI_MODEL_LLM_BRAND_KIT_FALLBACK",
@@ -50,7 +50,7 @@ LLM_BRAND_KIT_FALLBACK = _env(
 # ═══════════════════════════════════════════════════════════════
 LLM_REASONING_PRIMARY = _env(
     "AI_MODEL_LLM_REASONING_PRIMARY",
-    "openrouter/deepseek/deepseek-v4-flash",
+    "ollama/deepseek-v4-flash",
 )
 LLM_REASONING_FALLBACK = _env(
     "AI_MODEL_LLM_REASONING_FALLBACK",

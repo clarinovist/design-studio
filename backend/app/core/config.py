@@ -17,6 +17,8 @@ class Settings(BaseSettings):
 
     # LLM
     OPENROUTER_API_KEY: str = ""
+    OLLAMA_API_KEY: str = ""
+    OLLAMA_BASE_URL: str = "https://api.ollama.com"
     GEMINI_API_KEY: str = ""
     QUANTUM_LAYOUT_ENABLED: bool = True
     LLM_MAX_CONCURRENT_PER_MODEL: int = 5
@@ -99,6 +101,7 @@ def missing_required_runtime_settings(config: Settings = settings) -> list[str]:
         "NEXTAUTH_SECRET": config.NEXTAUTH_SECRET,
         "FAL_KEY": config.FAL_KEY,
         "OPENROUTER_API_KEY": config.OPENROUTER_API_KEY,
+        "OLLAMA_API_KEY": config.OLLAMA_API_KEY,
         "S3_ENDPOINT": config.S3_ENDPOINT,
         "S3_BUCKET": config.S3_BUCKET,
         "S3_ACCESS_KEY": config.S3_ACCESS_KEY,

@@ -153,7 +153,7 @@ async def generate_design_brief_questions(raw_text: str) -> dict:
     """
     from app.schemas.design import BriefQuestionsResponse
 
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         import logging
         from unittest.mock import AsyncMock
 
@@ -255,7 +255,7 @@ async def generate_unified_brief_questions(
     """
     from app.schemas.design import BriefQuestionsResponse
 
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         import logging
         from unittest.mock import AsyncMock
 
@@ -427,7 +427,7 @@ async def parse_design_text(
         brand_memory_context=brand_memory_context,
     )
 
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         # Allow tests to patch asyncio.to_thread and provide fake LLM responses
         # even when API key is missing; otherwise return the development mock.
         import logging
@@ -587,7 +587,7 @@ async def modify_visual_prompt(
     """
     from app.schemas.design import ModifyPromptResponse
 
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         import logging
 
         logging.warning("OPENROUTER_API_KEY is missing – returning mock modified data")
@@ -664,7 +664,7 @@ async def generate_project_title(prompt: str) -> str:
         ValueError: If the LLM returns an empty response.
         Exception: If the LLM call fails (handled internally by returning a fallback title).
     """
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         import logging
 
         logging.warning("OPENROUTER_API_KEY is missing – returning mock title")

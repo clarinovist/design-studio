@@ -274,7 +274,7 @@ async def suggest_backgrounds(
     """
     if not settings.FAL_KEY:
         raise ValueError("FAL_KEY is missing from environment")
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         raise ValueError("OPENROUTER_API_KEY is missing from environment")
 
     import os

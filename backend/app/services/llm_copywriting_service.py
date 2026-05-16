@@ -32,7 +32,7 @@ async def generate_copywriting_questions(raw_text: str) -> dict:
     """
     from app.schemas.design import BriefQuestionsResponse
 
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         import logging
         from unittest.mock import AsyncMock
 
@@ -163,7 +163,7 @@ async def generate_ai_copywriting(
         for key, value in clarification_answers.items():
             prompt_payload += f"- {key}: {value}\n"
 
-    if not settings.OPENROUTER_API_KEY:
+    if not (settings.OLLAMA_API_KEY or settings.OPENROUTER_API_KEY):
         import logging
 
         logging.warning("OPENROUTER_API_KEY is missing – returning mock copywriting")
