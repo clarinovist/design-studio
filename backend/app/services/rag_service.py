@@ -55,25 +55,39 @@ async def get_embedding_for_text(text: str) -> List[float]:
                 "Content-Type": "application/json",
             }
 
+        use_local = EMBEDDING_TEXT_MODEL.startswith("local/")
+
         async with httpx.AsyncClient(timeout=30.0) as client:
+            body: dict = {"model": model_name, "input": text}
+            # Ollama local uses "prompt" field, not "input"
+            if use_local:
+                body = {"model": model_name, "prompt": text}
+
             response = await client.post(
                 endpoint,
                 headers=headers,
-                json={"model": model_name, "input": text},
+                json=body,
             )
             response.raise_for_status()
             payload = response.json()
 
-        vectors = payload.get("data", [])
-        if not vectors or "embedding" not in vectors[0]:
-            raise ValueError("Invalid embedding response from OpenRouter")
+        # Ollama local returns {"embedding": [...]}, OpenRouter returns {"data": [{"embedding": ...}]}
+        if use_local:
+            embedding = payload.get("embedding", [])
+            if not embedding:
+                raise ValueError("Invalid embedding response from Ollama local")
+        else:
+            vectors = payload.get("data", [])
+            if not vectors or "embedding" not in vectors[0]:
+                raise ValueError("Invalid embedding response")
+            embedding = vectors[0]["embedding"]
 
-        return vectors[0]["embedding"]
+        return embedding
     except Exception as e:
         logger.error(f"Error generating embedding: {e}")
-        # Return fallback zeros vector just to avoid db crash for prototyping
-        # In production this should raise or retry
-        return [0.0] * 768
+        # Fallback — bge-m3 is 1024 dims, OpenRouter nomic is 768 dims
+        fallback_dim = 1024 if EMBEDDING_TEXT_MODEL.startswith("local/") else 768
+        return [0.0] * fallback_dim
 
 async def chunk_and_store_guidelines(
     db: AsyncSession,
@@ -128,7 +142,7 @@ async def retrieve_top_k_memories(
     """
     query_embedding = await get_embedding_for_text(query_text)
 
-    if not query_embedding or len(query_embedding) != 768:
+    if not query_embedding:
         return []
 
     # Use pgvector's corresponding operator (L2 distance or inner product)
