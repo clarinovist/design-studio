@@ -14,29 +14,8 @@ type TestimonialItem = {
 
 const colorClasses = ["bg-purple-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500"];
 
-// Fallback local testimonials used when API data is unavailable or empty.
-const fallbackTestimonials: TestimonialItem[] = [
-  {
-    quote: "Saya jadi lebih tenang saat menyiapkan materi promo harian, karena ada alur yang jelas dari ide sampai draft visual.",
-    name: "Rina",
-    role: "Pemilik Toko Kue Online, Surabaya",
-  },
-  {
-    quote: "Yang paling membantu, tim jadi tidak bingung harus mulai dari mana. Prosesnya lebih rapi dan konsisten antar channel.",
-    name: "Deni",
-    role: "Reseller Fashion, Jakarta",
-  },
-  {
-    quote: "Untuk upload katalog, hasil visual terasa lebih konsisten sehingga kami lebih percaya diri saat publish produk baru.",
-    name: "Siti Aminah",
-    role: "Penjual Makanan Kering, TikTok Shop",
-  },
-  {
-    quote: "Model kreditnya fleksibel untuk UMKM. Saya beli saat butuh produksi konten, jadi lebih terkontrol dibanding langganan bulanan tetap.",
-    name: "Dian Wahyu",
-    role: "Toko Sepatu Lokal",
-  }
-];
+// Tidak ada fallback testimonial agar social proof tetap jujur.
+// Section hanya tampilkan testimoni yang sudah approved dari backend.
 
 function getInitials(name: string) {
   return name
@@ -50,7 +29,7 @@ function getInitials(name: string) {
 export function TestimonialCarousel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [testimonials, setTestimonials] = useState<TestimonialItem[]>(fallbackTestimonials);
+  const [testimonials, setTestimonials] = useState<TestimonialItem[]>([]);
 
   useEffect(() => {
     const loadTestimonials = async () => {
@@ -64,7 +43,7 @@ export function TestimonialCarousel() {
           setTestimonials(data.items);
         }
       } catch {
-        // Keep the local fallback when API is unavailable.
+        // Keep empty state when API is unavailable.
       }
     };
 
@@ -73,13 +52,13 @@ export function TestimonialCarousel() {
 
   // Auto-scroll logic
   useEffect(() => {
-    if (isHovered) return;
-    
+    if (isHovered || testimonials.length === 0) return;
+
     const interval = setInterval(() => {
       if (scrollRef.current) {
         // Scroll right by 2px every 20ms
         scrollRef.current.scrollLeft += 1;
-        
+
         // Reset to start if reached the end (approximate)
         if (scrollRef.current.scrollLeft >= scrollRef.current.scrollWidth - scrollRef.current.clientWidth - 5) {
           scrollRef.current.scrollLeft = 0;
@@ -88,7 +67,18 @@ export function TestimonialCarousel() {
     }, 20);
 
     return () => clearInterval(interval);
-  }, [isHovered]);
+  }, [isHovered, testimonials.length]);
+
+  if (testimonials.length === 0) {
+    return (
+      <div className="w-full py-8 px-4">
+        <div className="max-w-3xl mx-auto rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+          <p className="text-sm text-slate-300 font-medium">Belum ada testimoni publik yang disetujui.</p>
+          <p className="text-xs text-slate-500 mt-2">Kami tampilkan testimoni setelah ada submission yang lolos review moderasi.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full py-12 relative overflow-hidden">

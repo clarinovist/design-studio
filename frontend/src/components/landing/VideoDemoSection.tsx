@@ -29,7 +29,7 @@ export function VideoDemoSection() {
           
           <p className="text-slate-400 text-lg max-w-xl mx-auto lg:mx-0">
             Lihat bagaimana AI membantu proses yang biasanya melelahkan jadi lebih sederhana.
-            Anda tetap pegang kontrol untuk revisi sampai visual terasa pas dengan brand.
+            Kamu tetap pegang kontrol untuk revisi sampai visual terasa pas dengan brand.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4">

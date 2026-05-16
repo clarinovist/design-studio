@@ -5,7 +5,7 @@ import { Users, Image, Zap } from "lucide-react";
 const TESTIMONIAL_STATS = [
   {
     icon: Zap,
-    title: "2 Menit",
+    title: "Hitungan Menit",
     description: "dari ide sampai desain siap download",
   },
   {
@@ -43,10 +43,10 @@ export function TestimonialsSection({ waitlistCount }: TestimonialsSectionProps)
 
         <div className="text-center mb-10 px-4">
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-            Yang Kami Validasi di Beta Ini
+            Testimoni Pengguna Beta (Approved)
           </h2>
           <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-            Contoh feedback ini bersifat ilustrasi internal sampai testimoni publik yang disetujui tersedia.
+            Kami hanya menampilkan testimoni yang sudah lolos review moderasi.
           </p>
         </div>
         <TestimonialCarousel />
@@ -61,7 +61,7 @@ export function TestimonialsSection({ waitlistCount }: TestimonialsSectionProps)
                 <strong className="text-purple-300">{Math.max(0, 500 - waitlistCount)} slot tersisa.</strong>
               </>
             ) : (
-              "Batch pertama hanya untuk 500 UMKM."
+              "Batch pertama dibuka bertahap untuk 500 seller UMKM."
             )}
           </p>
         </div>

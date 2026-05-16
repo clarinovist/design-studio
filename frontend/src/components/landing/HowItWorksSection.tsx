@@ -79,7 +79,7 @@ export function HowItWorksSection() {
       <div className="w-full py-16 border-t border-white/5 relative bg-gradient-to-b from-transparent to-purple-900/10">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <p className="text-sm font-semibold text-slate-400 uppercase tracking-widest mb-8">
-            Hasil siap diunggah ke marketplace dan platform favorit Anda
+            Hasil siap diunggah ke marketplace dan platform favorit kamu
           </p>
           <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
             <div className="flex items-center gap-2 text-xl font-bold text-orange-500">
