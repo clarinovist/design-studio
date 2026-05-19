@@ -17,12 +17,18 @@ const nextConfig: NextConfig = {
     ];
   },
   generateBuildId: async () => {
-    // Explicitly use static ID from Github Actions CI for cache consistency
+    // Prefer CI/deployment-provided IDs for cache consistency across containers.
     if (process.env.NEXT_PUBLIC_BUILD_ID) {
       return process.env.NEXT_PUBLIC_BUILD_ID;
     }
-    // Fallback is strictly for local development only
-    return process.env.VERCEL_GIT_COMMIT_SHA || `dev-${Date.now()}`;
+
+    if (process.env.VERCEL_GIT_COMMIT_SHA) {
+      return process.env.VERCEL_GIT_COMMIT_SHA;
+    }
+
+    // Keep local and ad-hoc Docker builds deterministic. Avoid Date.now() here:
+    // it changes on every build and increases stale-client/cache mismatch noise.
+    return "dev-build";
   },
   images: {
     remotePatterns: [
