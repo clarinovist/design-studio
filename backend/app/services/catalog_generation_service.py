@@ -34,6 +34,15 @@ from app.services.llm_json_utils import parse_llm_json
 logger = logging.getLogger(__name__)
 
 
+_STRUCTURE_KEYS = (
+    "suggested_structure",
+    "pages",
+    "structure",
+    "page_plan",
+    "catalog_structure",
+)
+
+
 def _build_product_structure(basics: CatalogBasicsRequest) -> List[CatalogPagePlan]:
     pages = [
         CatalogPagePlan(
@@ -373,14 +382,30 @@ async def _run_catalog_json_call(system_instruction: str, payload: dict) -> obje
     return parse_llm_json(response.text)
 
 
+def _sanitize_for_log(payload: object, limit: int = 600) -> str:
+    try:
+        serialized = json.dumps(payload, ensure_ascii=False, default=str)
+    except TypeError:
+        serialized = str(payload)
+    return serialized if len(serialized) <= limit else f"{serialized[:limit]}…"
+
+
+def _extract_structure_candidates(payload: Dict[str, object]) -> List[object]:
+    for key in _STRUCTURE_KEYS:
+        candidate = payload.get(key)
+        if isinstance(candidate, list):
+            return candidate
+    return []
+
+
 def _normalize_structure_payload(payload: object, request: CatalogBasicsRequest) -> PlanStructureResponse:
     if not isinstance(payload, dict):
         raise TypeError("Structure payload must be a JSON object")
-    structure = payload.get("suggested_structure") or payload.get("pages") or []
+
+    structure = _extract_structure_candidates(payload)
     missing_data = payload.get("missing_data") or []
     warnings = payload.get("warnings") or []
-    if not isinstance(structure, list):
-        raise TypeError("suggested_structure must be a list")
+
     normalized_pages = []
     for index, item in enumerate(structure, start=1):
         if not isinstance(item, dict):
@@ -391,8 +416,10 @@ def _normalize_structure_payload(payload: object, request: CatalogBasicsRequest)
         current.setdefault("layout", "text-image")
         current.setdefault("content", {})
         normalized_pages.append(CatalogPagePlan.model_validate(current))
+
     if not normalized_pages:
         raise ValueError("No valid pages returned")
+
     return PlanStructureResponse(
         suggested_structure=normalized_pages[: request.total_pages],
         missing_data=[str(item) for item in missing_data if isinstance(item, str)],
@@ -508,13 +535,20 @@ async def plan_catalog_structure(request: CatalogBasicsRequest) -> PlanStructure
     }
     system_instruction = (
         "You are an AI catalog planner. Return JSON only with keys suggested_structure, missing_data, warnings. "
-        "Each page must contain page_number, type, layout, and content. Keep the output practical for Indonesian catalog design workflows."
+        "suggested_structure MUST be a JSON array with 1 to total_pages objects. "
+        "Each page object MUST contain page_number, type, layout, and content keys. "
+        "Do not rename keys and do not return prose. Keep the output practical for Indonesian catalog design workflows."
     )
     try:
         result = await _run_catalog_json_call(system_instruction, payload)
         return _normalize_structure_payload(result, request)
-    except Exception:
-        logger.exception("Catalog structure fallback activated")
+    except Exception as exc:
+        logger.warning(
+            "Catalog structure fallback activated: reason=%s model=%s sample=%s",
+            str(exc),
+            LLM_REASONING_PRIMARY,
+            _sanitize_for_log(result if "result" in locals() else None),
+        )
         return fallback
 
 

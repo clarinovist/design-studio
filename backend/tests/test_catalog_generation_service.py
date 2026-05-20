@@ -10,6 +10,7 @@ from app.schemas.catalog import (
     SuggestStylesRequest,
 )
 from app.services.catalog_generation_service import (
+    _normalize_structure_payload,
     finalize_catalog_plan,
     generate_catalog_copy,
     map_catalog_images,
@@ -138,3 +139,49 @@ async def test_finalize_catalog_plan_merges_copy_and_images():
     assert result.total_pages == 4
     assert result.pages[0].content["title"] == "Atelier Mode"
     assert result.pages[0].content["image_roles"][0]["category"] == "cover_image"
+
+
+def test_normalize_structure_payload_accepts_alternate_structure_keys():
+    request = CatalogBasicsRequest(
+        catalog_type="product",
+        total_pages=3,
+        goal="selling",
+        tone="premium",
+        business_name="Atelier Mode",
+    )
+    payload = {
+        "structure": [
+            {
+                "page_number": 1,
+                "type": "cover",
+                "layout": "hero",
+                "content": {"title": "Atelier Mode"},
+            }
+        ]
+    }
+
+    result = _normalize_structure_payload(payload, request)
+
+    assert len(result.suggested_structure) == 1
+    assert result.suggested_structure[0].type == "cover"
+
+
+@pytest.mark.asyncio
+async def test_plan_catalog_structure_logs_warning_on_invalid_llm_payload(caplog):
+    request = CatalogBasicsRequest(
+        catalog_type="product",
+        total_pages=4,
+        goal="selling",
+        tone="premium",
+        business_name="Atelier Mode",
+    )
+
+    with patch("app.services.catalog_generation_service._llm_available", return_value=True), patch(
+        "app.services.catalog_generation_service._run_catalog_json_call",
+        return_value={"suggested_structure": []},
+    ):
+        with caplog.at_level("WARNING"):
+            result = await plan_catalog_structure(request)
+
+    assert len(result.suggested_structure) == 4
+    assert "Catalog structure fallback activated: reason=No valid pages returned" in caplog.text
