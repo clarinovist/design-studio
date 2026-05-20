@@ -13,6 +13,7 @@ from app.services.llm_service import (
     modify_visual_prompt,
     parse_design_text,
 )
+from app.services.llm_design_service import _normalize_parsed_text_payload
 from app.services.pipeline_prompt_builder import build_rules_a, build_rules_b
 from app.schemas.design import ParsedTextElements
 
@@ -147,6 +148,90 @@ async def test_parse_design_text_accepts_chattery_json_response():
 
     assert isinstance(result, ParsedTextElements)
     assert result.headline == "Weekend Sale"
+
+
+def test_normalize_parsed_text_payload_coerces_font_weight_names_to_ints():
+    payload = {
+        **_BASE,
+        "headline_layout": {
+            "x": 0.5,
+            "y": 0.2,
+            "font_family": "Inter",
+            "font_size": 72,
+            "font_weight": "Bold",
+            "color": "#FFFFFF",
+            "align": "center",
+        },
+        "sub_headline_layout": {
+            "x": 0.5,
+            "y": 0.5,
+            "font_family": "Inter",
+            "font_size": 36,
+            "font_weight": "regular",
+            "color": "#FFFFFF",
+            "align": "center",
+        },
+        "cta_layout": {
+            "x": 0.5,
+            "y": 0.8,
+            "font_family": "Inter",
+            "font_size": 28,
+            "font_weight": "SemiBold",
+            "color": "#FFFFFF",
+            "align": "center",
+        },
+    }
+
+    normalized = _normalize_parsed_text_payload(payload)
+
+    assert normalized["headline_layout"]["font_weight"] == 700
+    assert normalized["sub_headline_layout"]["font_weight"] == 400
+    assert normalized["cta_layout"]["font_weight"] == 600
+
+
+@pytest.mark.asyncio
+async def test_parse_design_text_accepts_font_weight_names_in_llm_output():
+    payload = {
+        **_BASE,
+        "headline_layout": {
+            "x": 0.5,
+            "y": 0.2,
+            "font_family": "Inter",
+            "font_size": 72,
+            "font_weight": "bold",
+            "color": "#FFFFFF",
+            "align": "center",
+        },
+        "sub_headline_layout": {
+            "x": 0.5,
+            "y": 0.5,
+            "font_family": "Inter",
+            "font_size": 36,
+            "font_weight": "regular",
+            "color": "#FFFFFF",
+            "align": "center",
+        },
+        "cta_layout": {
+            "x": 0.5,
+            "y": 0.8,
+            "font_family": "Inter",
+            "font_size": 28,
+            "font_weight": "SemiBold",
+            "color": "#FFFFFF",
+            "align": "center",
+        },
+    }
+
+    with patch("asyncio.to_thread", new=AsyncMock(return_value=_fake_response(payload))):
+        result = await parse_design_text("Promo studio foto premium")
+
+    assert isinstance(result, ParsedTextElements)
+    assert result.headline_layout is not None
+    assert result.headline_layout.font_weight == 700
+    assert result.sub_headline_layout is not None
+    assert result.sub_headline_layout.font_weight == 400
+    assert result.cta_layout is not None
+    assert result.cta_layout.font_weight == 600
 
 
 @pytest.mark.asyncio

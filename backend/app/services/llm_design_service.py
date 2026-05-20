@@ -42,6 +42,48 @@ def extract_json_from_text(raw_text: str) -> str:
     return _extract_json_from_text(raw_text)
 
 
+def _coerce_font_weight(value):
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        mapping = {
+            "thin": 100,
+            "extralight": 200,
+            "ultralight": 200,
+            "light": 300,
+            "regular": 400,
+            "normal": 400,
+            "medium": 500,
+            "semibold": 600,
+            "semi-bold": 600,
+            "demibold": 600,
+            "bold": 700,
+            "extrabold": 800,
+            "ultrabold": 800,
+            "black": 900,
+            "heavy": 900,
+        }
+        if normalized in mapping:
+            return mapping[normalized]
+        if normalized.isdigit():
+            return int(normalized)
+    return value
+
+
+def _normalize_font_weight_fields(payload: dict) -> dict:
+    normalized = dict(payload)
+    for layout_key in ["headline_layout", "sub_headline_layout", "cta_layout"]:
+        layout = normalized.get(layout_key)
+        if isinstance(layout, dict) and "font_weight" in layout:
+            copied = dict(layout)
+            copied["font_weight"] = _coerce_font_weight(copied.get("font_weight"))
+            normalized[layout_key] = copied
+    return normalized
+
+
 def _normalize_parsed_text_payload(payload: object) -> dict:
     if not isinstance(payload, dict):
         raise TypeError("Design parsing payload must be a JSON object")
@@ -98,7 +140,7 @@ def _normalize_parsed_text_payload(payload: object) -> dict:
         if layout_key not in normalized and isinstance(visual_design.get(layout_key), dict):
             normalized[layout_key] = visual_design.get(layout_key)
 
-    return normalized
+    return _normalize_font_weight_fields(normalized)
 
 
 def _normalize_manual_copy_value(value: Optional[str]) -> Optional[str]:
