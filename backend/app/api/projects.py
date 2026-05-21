@@ -196,39 +196,41 @@ async def delete_project(
     if not project:
         raise NotFoundError(detail="Project not found")
 
-    # Find all jobs associated with this project and sum their file sizes
     from app.models.job import Job
 
-    jobs_result = await db.execute(
-        select(Job).where(Job.project_id == project_id)
-    )
+    jobs_result = await db.execute(select(Job).where(Job.project_id == project_id))
     jobs = jobs_result.scalars().all()
 
-    total_file_size = sum(job.file_size or 0 for job in jobs)
-
-    # Reclaim storage for all associated jobs
-    if total_file_size > 0:
-        from app.services.storage_quota_service import decrement_usage
-
-        await decrement_usage(current_user.id, total_file_size, db)
-        logger.info(
-            f"Project {project_id}: reclaimed {total_file_size} bytes from user {current_user.id}"
-        )
-
-    # Delete associated job result files from storage
+    # Delete associated job result files from storage, then delete their DB rows.
+    # Job.project_id uses ON DELETE SET NULL, so leaving jobs in place after
+    # deleting files makes authoritative storage recalculation count stale rows.
     from app.services.storage_service import delete_image
 
     for job in jobs:
-        if job.result_url:
+        result_url = getattr(job, "result_url", None)
+        if isinstance(result_url, str) and result_url:
             try:
-                await delete_image(job.result_url)
-                logger.debug(f"Deleted job result file: {job.result_url}")
+                await delete_image(result_url)
+                logger.debug(f"Deleted job result file: {result_url}")
             except Exception as e:
-                logger.warning(f"Failed to delete job result file {job.result_url}: {e}")
+                logger.warning(f"Failed to delete job result file {result_url}: {e}")
+        await db.delete(job)
 
-    # Delete the project (cascade will handle ProjectVersions)
+    # Delete the project (cascade handles ProjectVersions)
     await db.delete(project)
-    await db.commit()
+    await db.flush()
+
+    # Reconcile storage from remaining authoritative rows after deletion.
+    from app.services.storage_quota_service import recalculate_storage
+
+    try:
+        new_storage = await recalculate_storage(current_user.id, db)
+        logger.info(
+            f"Project {project_id}: reconciled storage for user {current_user.id} to {new_storage} bytes"
+        )
+    except Exception as e:
+        logger.warning(f"Failed to reconcile storage after project deletion: {e}")
+        await db.commit()
     return None
 
 

@@ -125,12 +125,13 @@ async def delete_tool_result(
 
     await delete_image(record.result_url)
 
-    # 2. Reclaim storage quota
-    if record.file_size and record.file_size > 0:
-        from app.services.storage_quota_service import decrement_usage
-
-        await decrement_usage(current_user.id, record.file_size, db)
-
-    # 3. Delete DB record
+    # 2. Delete DB record first, then reconcile from authoritative rows.
+    # Counter-based decrement can drift if a previous delete partially failed
+    # or if the user's stored counter was already stale.
     await db.delete(record)
-    await db.commit()
+    await db.flush()
+
+    # 3. Recalculate storage quota from remaining records.
+    from app.services.storage_quota_service import recalculate_storage
+
+    await recalculate_storage(current_user.id, db)

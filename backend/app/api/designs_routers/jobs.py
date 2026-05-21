@@ -250,20 +250,15 @@ async def delete_job(
     if not job:
         raise NotFoundError(detail="Job not found")
 
-    if job.result_url:
-        from app.services.storage_quota_service import (
-            estimate_file_size,
-            decrement_usage,
-        )
+    result_url = getattr(job, "result_url", None)
+    if isinstance(result_url, str) and result_url:
+        from app.services.storage_service import delete_image
 
-        # Prefer the stored file_size; fall back to HEAD request for old records
-        size = (
-            job.file_size
-            if getattr(job, "file_size", 0)
-            else await estimate_file_size(job.result_url)
-        )
-        if size > 0:
-            await decrement_usage(current_user.id, size, db)
+        await delete_image(result_url)
 
     await db.delete(job)
-    await db.commit()
+    await db.flush()
+
+    from app.services.storage_quota_service import recalculate_storage
+
+    await recalculate_storage(current_user.id, db)
