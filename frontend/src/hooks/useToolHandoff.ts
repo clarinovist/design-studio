@@ -21,6 +21,8 @@ export interface ToolHandoffOptions {
   };
   copyVariants?: CopywritingVariation[];
   importQueue?: ImportQueueItem[];
+  canvasState?: Record<string, unknown>;
+  aspectRatio?: string;
 }
 
 /**
@@ -44,6 +46,8 @@ export function useToolHandoff() {
       primaryAsset,
       copyVariants,
       importQueue,
+      canvasState,
+      aspectRatio,
     }: ToolHandoffOptions) => {
       setIsLoading(true);
       try {
@@ -69,7 +73,8 @@ export function useToolHandoff() {
         const project = await saveProject({
           title: title ?? `Hasil ${sourceTool}`,
           status: "draft",
-          canvas_state: {
+          aspect_ratio: aspectRatio,
+          canvas_state: canvasState ?? {
             backgroundUrl: resultUrl,
             elements: [],
             workflow,

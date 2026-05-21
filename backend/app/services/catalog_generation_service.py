@@ -46,6 +46,27 @@ _STRUCTURE_KEYS = (
     "catalog_structure",
 )
 
+_PHOTO_STUDIO_KEYWORDS = (
+    "studio foto",
+    "studio photography",
+    "photography studio",
+    "fotografi",
+    "photography",
+    "photoshoot",
+    "photo shoot",
+    "wisuda",
+    "prewedding",
+)
+
+
+def _is_photo_studio_context(basics: CatalogBasicsRequest) -> bool:
+    haystack = " ".join(
+        part.strip().lower()
+        for part in [basics.business_name or "", basics.business_context or ""]
+        if part and part.strip()
+    )
+    return any(keyword in haystack for keyword in _PHOTO_STUDIO_KEYWORDS)
+
 
 def _build_product_structure(basics: CatalogBasicsRequest) -> List[CatalogPagePlan]:
     pages = [
@@ -100,6 +121,37 @@ def _build_product_structure(basics: CatalogBasicsRequest) -> List[CatalogPagePl
 
 
 def _build_service_structure(basics: CatalogBasicsRequest) -> List[CatalogPagePlan]:
+    if _is_photo_studio_context(basics) and basics.total_pages == 3:
+        return [
+            CatalogPagePlan(
+                page_number=1,
+                type="cover",
+                layout="hero",
+                content={
+                    "title": basics.business_name or "Studio Foto Profesional",
+                    "subtitle": "Portfolio visual untuk sesi foto, wisuda, dan momen spesial",
+                },
+            ),
+            CatalogPagePlan(
+                page_number=2,
+                type="service_list",
+                layout="grid",
+                content={
+                    "title": "Paket Foto Unggulan",
+                    "description": "Tampilkan kategori sesi, benefit utama, dan contoh hasil foto terbaik.",
+                },
+            ),
+            CatalogPagePlan(
+                page_number=3,
+                type="cta",
+                layout="contact-cta",
+                content={
+                    "title": "Booking Sesi Foto Anda",
+                    "description": "Arahkan calon klien ke reservasi, konsultasi, atau WhatsApp studio.",
+                },
+            ),
+        ]
+
     pages = [
         CatalogPagePlan(
             page_number=1,
@@ -214,6 +266,13 @@ def _classify_image(image: CatalogImageInput, catalog_type: str, fallback_page: 
     elif catalog_type == "service" and any(keyword in source for keyword in ["team", "staff", "person", "office"]):
         category = "service_image"
         confidence = 0.87
+    elif catalog_type == "service" and any(
+        keyword in source
+        for keyword in ["studio", "foto", "fotografi", "photography", "photoshoot", "wisuda", "prewedding", "portfolio"]
+    ):
+        category = "service_image"
+        confidence = 0.91
+        recommended_pages = [1, fallback_page] if fallback_page != 1 else [1]
     elif catalog_type == "product":
         category = "product_image"
         confidence = 0.82

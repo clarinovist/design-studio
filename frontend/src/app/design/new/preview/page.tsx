@@ -15,6 +15,7 @@ import { DESIGN_BRIEF_SESSION_KEY, type DesignBriefSessionState } from "@/lib/de
 import type { CatalogRenderStatusResponse } from "@/lib/api/types";
 import { BriefSummaryCard } from "./BriefSummaryCard";
 import { CatalogRenderGallery } from "./CatalogRenderGallery";
+import { buildPromoCanvasStateFromJob } from "./handoff";
 import {
     ASPECT_RATIO_MAP,
     GEN_STATUS_LABELS,
@@ -412,33 +413,50 @@ export default function DesignPreviewPage() {
             });
             const jobId = jobData.job_id;
 
-            const fetchResult = async () => {
+            const getCompletedStatus = async () => {
                 const s = await getJobStatus(jobId);
-                if (s.status === "completed" && s.result_url) return s.result_url as string;
+                if (s.status === "completed" && s.result_url) return s;
                 if (s.status === "failed") throw new Error(s.error_message || "Generation gagal");
                 return null;
             };
 
-            // If already done synchronously
-            let resultUrl = await fetchResult();
-            if (!resultUrl) {
+            let completedStatus = await getCompletedStatus();
+            if (!completedStatus) {
                 const maxAttempts = 180;
-                for (let i = 0; i < maxAttempts && !resultUrl && isMountedRef.current; i++) {
+                for (let i = 0; i < maxAttempts && !completedStatus && isMountedRef.current; i++) {
                     await new Promise<void>(resolve => setTimeout(resolve, 2000));
                     if (!isMountedRef.current) {
                         return;
                     }
-                    resultUrl = await fetchResult();
+                    completedStatus = await getCompletedStatus();
                 }
             }
-            if (!resultUrl) throw new Error("Generation masih berjalan lebih lama dari biasanya. Coba cek lagi beberapa saat atau ulangi dengan prompt yang lebih ringkas.");
+            if (!completedStatus?.result_url) throw new Error("Generation masih berjalan lebih lama dari biasanya. Coba cek lagi beberapa saat atau ulangi dengan prompt yang lebih ringkas.");
 
             await openInEditor({
-                resultUrl,
+                resultUrl: completedStatus.result_url,
                 sourceTool: "design-brief",
                 title: `Desain ${brief.goal} — ${brief.style}`,
                 intent: "design_brief",
                 entryMode: "brief_preview",
+                canvasState: buildPromoCanvasStateFromJob({
+                    resultUrl: completedStatus.result_url,
+                    aspectRatio,
+                    visualPrompt: completedStatus.visual_prompt,
+                    jobStatus: {
+                        headline: completedStatus.headline,
+                        sub_headline: completedStatus.sub_headline,
+                        cta: completedStatus.cta,
+                        quantum_layout: completedStatus.quantum_layout,
+                    },
+                    brief: {
+                        headlineOverride: brief.headlineOverride,
+                        subHeadlineOverride: brief.subHeadlineOverride,
+                        ctaOverride: brief.ctaOverride,
+                        productName: brief.productName,
+                        offerText: brief.offerText,
+                    },
+                }),
             });
             posthog?.capture("design_brief_preview_generate_success", {
                 goal: brief.goal,
