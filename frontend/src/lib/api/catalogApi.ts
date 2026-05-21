@@ -18,6 +18,37 @@ import type {
 } from './types';
 
 
+type CatalogApiErrorPayload = {
+    error?: {
+        detail?: string;
+    };
+    detail?: string;
+    message?: string;
+};
+
+
+async function readCatalogErrorPayload(res: Response): Promise<CatalogApiErrorPayload> {
+    try {
+        return await res.json() as CatalogApiErrorPayload;
+    } catch {
+        try {
+            const text = (await res.text()).trim();
+            if (!text) return {};
+            return { detail: text };
+        } catch {
+            return {};
+        }
+    }
+}
+
+
+function resolveCatalogErrorMessage(payload: CatalogApiErrorPayload, fallbackMessage: string): string {
+    const detail = payload?.error?.detail || payload?.detail || payload?.message;
+    const normalized = typeof detail === 'string' ? detail.trim() : '';
+    return normalized || fallbackMessage;
+}
+
+
 export function useCatalogEndpoints() {
     const { API_BASE_URL, getHeaders } = useApiCore();
 
@@ -29,8 +60,8 @@ export function useCatalogEndpoints() {
         });
 
         if (!res.ok) {
-            const errBase = await res.json().catch(() => ({}));
-            throw new Error((errBase?.error?.detail || errBase?.detail) || 'Failed to plan catalog structure');
+            const errBase = await readCatalogErrorPayload(res);
+            throw new Error(resolveCatalogErrorMessage(errBase, 'Failed to plan catalog structure'));
         }
 
         return res.json();
@@ -44,8 +75,8 @@ export function useCatalogEndpoints() {
         });
 
         if (!res.ok) {
-            const errBase = await res.json().catch(() => ({}));
-            throw new Error((errBase?.error?.detail || errBase?.detail) || 'Failed to suggest catalog styles');
+            const errBase = await readCatalogErrorPayload(res);
+            throw new Error(resolveCatalogErrorMessage(errBase, 'Failed to suggest catalog styles'));
         }
 
         return res.json();
@@ -59,8 +90,8 @@ export function useCatalogEndpoints() {
         });
 
         if (!res.ok) {
-            const errBase = await res.json().catch(() => ({}));
-            throw new Error((errBase?.error?.detail || errBase?.detail) || 'Failed to map catalog images');
+            const errBase = await readCatalogErrorPayload(res);
+            throw new Error(resolveCatalogErrorMessage(errBase, 'Failed to map catalog images'));
         }
 
         return res.json();
@@ -74,8 +105,8 @@ export function useCatalogEndpoints() {
         });
 
         if (!res.ok) {
-            const errBase = await res.json().catch(() => ({}));
-            throw new Error((errBase?.error?.detail || errBase?.detail) || 'Failed to generate catalog copy');
+            const errBase = await readCatalogErrorPayload(res);
+            throw new Error(resolveCatalogErrorMessage(errBase, 'Failed to generate catalog copy'));
         }
 
         return res.json();
@@ -89,8 +120,8 @@ export function useCatalogEndpoints() {
         });
 
         if (!res.ok) {
-            const errBase = await res.json().catch(() => ({}));
-            throw new Error((errBase?.error?.detail || errBase?.detail) || 'Failed to finalize catalog plan');
+            const errBase = await readCatalogErrorPayload(res);
+            throw new Error(resolveCatalogErrorMessage(errBase, 'Failed to finalize catalog plan'));
         }
 
         return res.json();
@@ -104,8 +135,8 @@ export function useCatalogEndpoints() {
         });
 
         if (!res.ok) {
-            const errBase = await res.json().catch(() => ({}));
-            throw new Error((errBase?.error?.detail || errBase?.detail) || 'Failed to start catalog render');
+            const errBase = await readCatalogErrorPayload(res);
+            throw new Error(resolveCatalogErrorMessage(errBase, 'Failed to start catalog render'));
         }
 
         return res.json();
@@ -118,8 +149,8 @@ export function useCatalogEndpoints() {
         });
 
         if (!res.ok) {
-            const errBase = await res.json().catch(() => ({}));
-            throw new Error((errBase?.error?.detail || errBase?.detail) || 'Failed to get catalog render status');
+            const errBase = await readCatalogErrorPayload(res);
+            throw new Error(resolveCatalogErrorMessage(errBase, 'Failed to get catalog render status'));
         }
 
         return res.json();

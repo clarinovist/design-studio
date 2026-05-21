@@ -116,6 +116,30 @@ async def test_inpaint_background_reuses_original_url(mock_upload, mock_fal_run,
     assert "no blurry letters" in sent_prompt
 
 
+@pytest.mark.asyncio
+@patch("app.services.bg_removal_service.fal_client.run_async", new_callable=AsyncMock)
+@patch("app.services.bg_removal_service.upload_image", new_callable=AsyncMock)
+async def test_inpaint_background_structural_mask_profile(mock_upload, mock_fal_run, product_image_bytes):
+    expected_final = b"final-image-bytes"
+    data_url = "data:image/jpeg;base64," + base64.b64encode(expected_final).decode()
+    mock_upload.return_value = "http://storage.local/mask.png"
+    mock_fal_run.return_value = {"images": [{"url": data_url}]}
+
+    result = await inpaint_background(
+        original_bytes=None,
+        transparent_png_bytes=product_image_bytes,
+        prompt="clean studio background",
+        original_url="http://storage.local/original.jpg",
+        mask_profile="structural_preserve",
+    )
+
+    assert result == expected_final
+    mock_upload.assert_called_once()
+    uploaded_mask_bytes = mock_upload.call_args.args[0]
+    uploaded_mask = Image.open(io.BytesIO(uploaded_mask_bytes)).convert("L")
+    assert uploaded_mask.size == (200, 200)
+
+
 def test_build_background_swap_standard_prompt_has_quality_guardrails():
     enhanced = build_background_swap_standard_prompt("minimalist white studio")
 
@@ -124,6 +148,9 @@ def test_build_background_swap_standard_prompt_has_quality_guardrails():
     assert "no random text" in enhanced
     assert "no blurry letters" in enhanced
     assert "no gibberish typography" in enhanced
+    assert "no old text" in enhanced
+    assert "no leftover text" in enhanced
+    assert "no residual typography" in enhanced
     assert "keep foreground object unchanged" in enhanced
     assert "background-only edit focused on requested visual elements" in enhanced
     assert "no letters" in enhanced
@@ -131,6 +158,7 @@ def test_build_background_swap_standard_prompt_has_quality_guardrails():
     assert "no signage" in enhanced
     assert "no numbers" in enhanced
     assert "no symbols" in enhanced
+    assert "no brand marks" in enhanced
 
 
 @pytest.mark.asyncio
