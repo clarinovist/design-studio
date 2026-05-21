@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     QUANTUM_LAYOUT_ENABLED: bool = True
     LLM_MAX_CONCURRENT_PER_MODEL: int = 5
 
+    # Async job hygiene
+    JOB_STALE_TIMEOUT_MINUTES: int = 60
+
     # Email
     RESEND_API_KEY: str = ""
     WAITLIST_EMAIL_FROM: str = "SmartDesign <system@nugrohopramono.my.id>"

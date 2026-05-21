@@ -7,6 +7,13 @@ export async function GET() {
       status: "ok",
       timestamp: new Date().toISOString(),
     },
-    { status: 200 }
+    {
+      status: 200,
+      headers: {
+        "Cache-Control": "no-cache, no-store, max-age=0, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    }
   );
 }

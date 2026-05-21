@@ -15,6 +15,11 @@ from app.services.llm_design_service import (
     normalize_brief_questions_payload,
 )
 from app.services.llm_json_utils import parse_llm_json
+from app.services.language_guard import (
+    assert_no_cjk_for_indonesian,
+    indonesian_language_instruction,
+    preview_text,
+)
 
 
 async def generate_copywriting_questions(raw_text: str) -> dict:
@@ -156,6 +161,10 @@ async def generate_ai_copywriting(
     system_prompt_formatted = COPYWRITING_SYSTEM_PROMPT.format(
         tone_instruction=tone_instruction, brand_instruction=brand_instruction
     )
+    system_prompt_formatted = (
+        f"{system_prompt_formatted}\n\n"
+        f"{indonesian_language_instruction('id')}"
+    )
 
     prompt_payload = f"Deskripsi Produk:\n{product_description}\n\n"
     if clarification_answers:
@@ -214,11 +223,16 @@ async def generate_ai_copywriting(
 
     try:
         data = parse_llm_json(response.text)
+        assert_no_cjk_for_indonesian(
+            data,
+            language="id",
+            context="copywriting response",
+        )
         parsed = CopywritingResponse.model_validate(data)
         return parsed.model_dump()
     except Exception as e:
         import logging
-        snippet = response.text[:200] + "..." if len(response.text) > 200 else response.text
+        snippet = preview_text(getattr(response, "text", ""))
         logging.exception(f"Error extracting copywriting via LLM. Snippet: {snippet}")
         raise e
 

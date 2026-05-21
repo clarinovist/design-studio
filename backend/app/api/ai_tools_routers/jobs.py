@@ -30,6 +30,7 @@ from app.services.ai_usage_service import (
     update_usage_for_job,
 )
 from app.services.provider_costs import estimate_ai_cost_usd, estimated_cost_metadata
+from app.services.stale_jobs import expire_stale_ai_tool_jobs
 from app.services.storage_service import download_image
 from app.services.subject_classifier_service import (
     build_product_scene_policy_result,
@@ -275,6 +276,8 @@ async def get_tool_job_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(rate_limit_reads),
 ):
+    await expire_stale_ai_tool_jobs(db)
+
     job = await get_job_for_user(db, job_id=job_id, user_id=current_user.id)
     if not job:
         raise NotFoundError(detail="Job not found")
@@ -298,6 +301,8 @@ async def list_my_tool_jobs(
 ):
     if tool_name and tool_name not in SUPPORTED_TOOL_NAMES:
         return []
+
+    await expire_stale_ai_tool_jobs(db)
 
     jobs = await list_jobs_for_user(
         db,

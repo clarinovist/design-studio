@@ -23,6 +23,10 @@ from app.schemas.catalog import (
     SuggestStylesRequest,
     SuggestStylesResponse,
 )
+from app.services.language_guard import (
+    assert_no_cjk_for_indonesian,
+    indonesian_language_instruction,
+)
 from app.services.llm_client import (
     call_gemini_with_fallback,
     get_direct_gemini_client,
@@ -609,10 +613,16 @@ async def generate_catalog_copy(request: GenerateCopyRequest) -> GenerateCopyRes
     }
     system_instruction = (
         "You write conversion-focused catalog copy. Return JSON only with keys pages, missing_data, warnings. "
-        "Each page must contain page_number, type, layout, and content."
+        "Each page must contain page_number, type, layout, and content. "
+        f"{indonesian_language_instruction(request.basics.language)}"
     )
     try:
         result = await _run_catalog_json_call(system_instruction, payload)
+        assert_no_cjk_for_indonesian(
+            result,
+            language=request.basics.language,
+            context="catalog copy response",
+        )
         normalized = _normalize_copy_payload(result, request)
         return normalized if normalized.pages else fallback
     except Exception:

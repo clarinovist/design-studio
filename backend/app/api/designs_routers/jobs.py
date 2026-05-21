@@ -12,6 +12,7 @@ from app.models.project import Project
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.services.storage_service import to_asset_response_url
+from app.services.stale_jobs import expire_stale_generation_jobs
 import json
 
 router = APIRouter(tags=["Designs - Jobs"])
@@ -122,6 +123,8 @@ async def get_job_status(
         job_uuid = uuid.UUID(job_id)
     except ValueError:
         raise ValidationError(detail="Invalid job ID format")
+
+    await expire_stale_generation_jobs(db)
 
     result = await db.execute(
         select(Job).where(Job.id == job_uuid, Job.user_id == current_user.id)
