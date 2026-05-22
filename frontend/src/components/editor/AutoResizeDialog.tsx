@@ -77,7 +77,8 @@ export const AutoResizeDialog: React.FC<AutoResizeDialogProps> = ({ open, onOpen
                     toast.info("Sedang melakukan ekspansi background dengan AI, mohon tunggu...");
                     const res = await batchResize({
                         image_url: backgroundUrl,
-                        target_sizes: requiredRatios
+                        target_sizes: requiredRatios,
+                        reference_focus: "human",
                     });
 
                     // Load returning URLs into HTMLImageElements

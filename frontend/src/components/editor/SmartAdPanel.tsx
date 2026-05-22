@@ -77,7 +77,8 @@ export const SmartAdPanel: React.FC = () => {
             const payload = {
                 image_base64: imagePreview,
                 brief: brief || undefined,
-                brand_kit_id: shouldUseBrandKit && activeBrandProfile ? activeBrandProfile.id : undefined
+                brand_kit_id: shouldUseBrandKit && activeBrandProfile ? activeBrandProfile.id : undefined,
+                reference_focus: 'human' as const,
             };
 
             const response = await generateSmartAd(payload);

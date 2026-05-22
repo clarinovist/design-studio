@@ -3,7 +3,11 @@ from unittest.mock import patch, MagicMock
 import io
 from PIL import Image
 
-from app.services.product_scene_service import generate_product_scene, _reframe_subject_lower
+from app.services.product_scene_service import (
+    _apply_category_placement,
+    _reframe_subject_lower,
+    generate_product_scene,
+)
 
 
 @pytest.fixture
@@ -178,7 +182,7 @@ async def test_generate_product_scene_closeup_uses_grounded_scale_and_offset(
     kwargs = mock_composite.call_args.kwargs
     assert kwargs["shadow_profile"] == "grounded"
     assert kwargs["scale_factor"] == pytest.approx(0.82)
-    assert kwargs["offset_y_ratio"] == pytest.approx(0.56)
+    assert kwargs["offset_y_ratio"] == pytest.approx(0.6)
 
 
 @pytest.mark.asyncio
@@ -262,6 +266,8 @@ async def test_generate_product_scene_ultra_uses_object_aware_inpaint(
     assert "contact shadows" in inpaint_kwargs["prompt"]
     assert "table surface" in inpaint_kwargs["prompt"]  # placement hint for cafe theme
     assert "label readability" in inpaint_kwargs["prompt"]
+    assert "preserve original product proportions and silhouette" in inpaint_kwargs["prompt"]
+    assert inpaint_kwargs["mask_profile"] == "structural_preserve"
 
     # Ultra route should skip background-generation and composite path.
     mock_generate.assert_not_called()
@@ -339,3 +345,27 @@ def test_reframe_subject_lower_returns_original_when_already_grounded():
     # Should return the exact same bytes objects (no allocation)
     assert new_orig is original_bytes
     assert new_mask is no_bg_bytes
+
+
+def test_apply_category_placement_clamps_by_theme_food():
+    scale, offset_y, category = _apply_category_placement(
+        theme="kitchen",
+        scale_factor=0.95,
+        offset_y_ratio=0.58,
+    )
+
+    assert category == "food"
+    assert scale == pytest.approx(0.9)
+    assert offset_y == pytest.approx(0.62)
+
+
+def test_apply_category_placement_clamps_by_theme_electronics():
+    scale, offset_y, category = _apply_category_placement(
+        theme="minimalist",
+        scale_factor=0.64,
+        offset_y_ratio=0.75,
+    )
+
+    assert category == "electronics"
+    assert scale == pytest.approx(0.68)
+    assert offset_y == pytest.approx(0.68)
