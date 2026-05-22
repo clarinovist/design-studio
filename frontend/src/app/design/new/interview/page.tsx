@@ -379,7 +379,10 @@ export default function DesignInterviewPage() {
                 });
             } catch (error) {
                 console.error(error);
-                setCatalogPlanningError("Gagal menyiapkan struktur katalog awal. Coba lagi.");
+                const message = error instanceof Error && error.message.trim().length > 0
+                    ? error.message
+                    : "Gagal menyiapkan struktur katalog awal. Coba lagi.";
+                setCatalogPlanningError(message);
                 setIsCatalogPlanning(false);
                 return;
             } finally {

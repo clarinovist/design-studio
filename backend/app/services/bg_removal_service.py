@@ -6,7 +6,7 @@ import io
 import logging
 import httpx
 import uuid
-from typing import Optional
+from typing import Literal, Optional
 import fal_client
 from PIL import Image, ImageFilter
 
@@ -26,8 +26,9 @@ _BG_SWAP_STANDARD_QUALITY_GUARDRAILS = (
     "clean background details, keep foreground object unchanged, "
     "background-only edit focused on requested visual elements, "
     "no random text, no blurry letters, no gibberish typography, "
+    "no old text, no leftover text, no residual typography, "
     "no letters, no words, no signage, no labels, no numbers, no symbols, "
-    "no watermark, no logo"
+    "no watermark, no logo, no brand marks"
 )
 
 _SHADOW_PROFILE_SETTINGS = {
@@ -160,7 +161,11 @@ def _feather_edges(img: Image.Image, radius: float = 1.0) -> Image.Image:
     return img
 
 
-def _extract_inpaint_mask(transparent_png_bytes: bytes) -> bytes:
+def _extract_inpaint_mask(
+    transparent_png_bytes: bytes,
+    *,
+    profile: Literal["aggressive_text_cleanup", "structural_preserve"] = "aggressive_text_cleanup",
+) -> bytes:
     """
     Creates an inpainting mask from a transparent PNG.
 
@@ -175,9 +180,28 @@ def _extract_inpaint_mask(transparent_png_bytes: bytes) -> bytes:
     # Invert: subject pixels (bright) → black (keep), bg pixels (dark) → white (generate)
     inverted = alpha.point(lambda x: 255 - x)
 
-    # Slight dilation + blur on edges so the inpaint blends cleanly at seams
-    inverted = inverted.filter(ImageFilter.MaxFilter(3))
-    inverted = inverted.filter(ImageFilter.GaussianBlur(radius=1.2))
+    if profile == "aggressive_text_cleanup":
+        # Enforce a more assertive background fill region so legacy
+        # text/watermark/signage from the original scene is less likely to
+        # survive near subject boundaries.
+        threshold_lut = [0] * 256
+        for value in range(24, 256):
+            threshold_lut[value] = 255
+        inverted = inverted.point(threshold_lut)
+
+        # Grow then soften the inpaint region so seams remain smooth while
+        # coverage is large enough to wipe old background artifacts.
+        inverted = inverted.filter(ImageFilter.MaxFilter(5))
+        inverted = inverted.filter(ImageFilter.GaussianBlur(radius=1.8))
+    else:
+        # Structural-preserve profile keeps mask edges tighter so product
+        # geometry is less likely to be altered by the inpaint model.
+        threshold_lut = [0] * 256
+        for value in range(12, 256):
+            threshold_lut[value] = 255
+        inverted = inverted.point(threshold_lut)
+        inverted = inverted.filter(ImageFilter.MaxFilter(3))
+        inverted = inverted.filter(ImageFilter.GaussianBlur(radius=1.0))
 
     output = io.BytesIO()
     inverted.save(output, format="PNG")
@@ -190,6 +214,7 @@ async def inpaint_background(
     prompt: str,
     *,
     original_url: Optional[str] = None,
+    mask_profile: Literal["aggressive_text_cleanup", "structural_preserve"] = "aggressive_text_cleanup",
 ) -> bytes:
     """
     Generates a new background by inpainting directly onto the original image.
@@ -221,7 +246,7 @@ async def inpaint_background(
     base_id = str(uuid.uuid4())[:8]
 
     # 1. Build mask
-    mask_bytes = _extract_inpaint_mask(transparent_png_bytes)
+    mask_bytes = _extract_inpaint_mask(transparent_png_bytes, profile=mask_profile)
 
     # 2. Upload assets to get public URLs.
     #    If original URL already exists, only upload the mask.

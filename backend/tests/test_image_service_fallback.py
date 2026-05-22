@@ -119,6 +119,9 @@ def test_build_background_swap_ultra_prompt_includes_guardrails():
     assert "no random text" in enhanced
     assert "no blurry letters" in enhanced
     assert "no gibberish typography" in enhanced
+    assert "no old text" in enhanced
+    assert "no leftover text" in enhanced
+    assert "no residual typography" in enhanced
     assert "keep foreground object unchanged" in enhanced
     assert "background-only edit focused on requested visual elements" in enhanced
     assert "no letters" in enhanced
@@ -127,6 +130,7 @@ def test_build_background_swap_ultra_prompt_includes_guardrails():
     assert "no labels" in enhanced
     assert "no numbers" in enhanced
     assert "no symbols" in enhanced
+    assert "no brand marks" in enhanced
 
 
 def test_build_background_swap_ultra_prompt_handles_empty_prompt():

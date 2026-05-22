@@ -279,8 +279,9 @@ def build_background_swap_ultra_prompt(prompt: str) -> str:
         "natural lighting continuity, clean background details, "
         "keep foreground object unchanged, background-only edit focused on requested visual elements, "
         "no random text, no blurry letters, no gibberish typography, "
+        "no old text, no leftover text, no residual typography, "
         "no letters, no words, no signage, no labels, no numbers, no symbols, "
-        "no watermark, no logo"
+        "no watermark, no logo, no brand marks"
     )
 
 
