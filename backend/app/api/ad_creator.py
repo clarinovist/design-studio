@@ -11,6 +11,7 @@ from app.api.rate_limit import rate_limit_dependency
 from app.models.user import User
 
 from app.services import bg_removal_service, image_service, outpaint_service
+from app.services.subject_classifier_service import classify_subject_for_product_scene
 from app.services.storage_service import upload_image
 from app.services.ad_prompt_builder import build_ad_concepts
 from app.core.exceptions import (
@@ -60,6 +61,14 @@ async def generate_smart_ad(
         image_bytes = base64.b64decode(base64_data)
         mime_type = "image/png" # Default assumption
 
+        requested_focus = str(getattr(request, "reference_focus", "auto") or "auto").strip().lower()
+        if requested_focus not in {"auto", "human", "object"}:
+            requested_focus = "auto"
+
+        subject_policy = classify_subject_for_product_scene(image_bytes)
+        inferred_focus = "human" if subject_policy.get("subject_type") in {"human", "mixed"} else "object"
+        resolved_reference_focus = requested_focus if requested_focus != "auto" else inferred_focus
+
         # 1. Remove background directly
         logger.info("Removing background for Ad Creator...")
         no_bg_bytes = await bg_removal_service.remove_background(image_bytes)
@@ -101,7 +110,10 @@ async def generate_smart_ad(
                 bg_result = await image_service.generate_background(
                     visual_prompt=visual_prompt,
                     style=c.get("id", "bold"), # map id to style if matching, else default
-                    aspect_ratio="1:1"
+                    aspect_ratio="1:1",
+                    reference_image_url=foreground_url,
+                    reference_focus=resolved_reference_focus,
+                    preserve_product=True,
                 )
                 return AdConcept(
                     id=c.get("id", str(uuid.uuid4())[:6]),
@@ -199,7 +211,13 @@ async def batch_resize_ad(
             res = await outpaint_service.outpaint_image(
                 image_url=request.image_url,
                 target_width=w,
-                target_height=h
+                target_height=h,
+                prompt=(
+                    "Extend background naturally while preserving the exact face identity, "
+                    "facial features, skin tone, body proportions, and clothing fit"
+                    if request.reference_focus == "human"
+                    else "Extend background naturally while preserving object geometry, proportions, and product identity"
+                ),
             )
             return size_str, res["url"]
 

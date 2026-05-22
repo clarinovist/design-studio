@@ -5,7 +5,7 @@ import logging
 import httpx
 from PIL import Image
 from typing import Dict, Any, Tuple, Optional
-from PIL import ImageStat
+from PIL import ImageStat, ImageOps
 
 from app.services import bg_removal_service
 from app.services.image_service import generate_background
@@ -36,6 +36,52 @@ _PLACEMENT_HINT_BY_THEME = {
     "kitchen": "product resting on kitchen counter top surface, grounded in lower third of frame",
     "bathroom": "product placed on marble tray surface, grounded in lower third of frame",
 }
+
+_CATEGORY_SCALE_RANGE: dict[str, tuple[float, float]] = {
+    "beauty": (0.72, 0.86),
+    "fashion": (0.76, 0.88),
+    "food": (0.74, 0.9),
+    "electronics": (0.68, 0.84),
+    "home": (0.66, 0.82),
+}
+
+_CATEGORY_OFFSET_Y_RANGE: dict[str, tuple[float, float]] = {
+    "beauty": (0.6, 0.7),
+    "fashion": (0.6, 0.7),
+    "food": (0.62, 0.72),
+    "electronics": (0.58, 0.68),
+    "home": (0.56, 0.66),
+}
+
+_THEME_TO_CATEGORY = {
+    "bathroom": "beauty",
+    "kitchen": "food",
+    "cafe": "food",
+    "nature": "fashion",
+    "minimalist": "electronics",
+    "studio": "beauty",
+}
+
+
+def _category_from_theme(theme: str) -> str:
+    return _THEME_TO_CATEGORY.get(theme, "beauty")
+
+
+def _clamp(value: float, bounds: tuple[float, float]) -> float:
+    lo, hi = bounds
+    return max(lo, min(hi, value))
+
+
+def _apply_category_placement(
+    *,
+    theme: str,
+    scale_factor: float,
+    offset_y_ratio: float,
+) -> tuple[float, float, str]:
+    category = _category_from_theme(theme)
+    scale = _clamp(scale_factor, _CATEGORY_SCALE_RANGE[category])
+    offset_y = _clamp(offset_y_ratio, _CATEGORY_OFFSET_Y_RANGE[category])
+    return scale, offset_y, category
 
 
 def _compute_subject_metrics(img: Image.Image) -> Tuple[Optional[Tuple[int, int, int, int]], float, float, float]:
@@ -190,6 +236,7 @@ def _build_scene_prompt(theme: str, visual_prompt: str, include_placement: bool 
         f"{visual_prompt}, {lighting}{placement}, "
         "maintain realistic contact shadows under the subject, "
         "preserve product shape, label readability, and branding details, "
+        "preserve original product proportions and silhouette, no warped geometry, "
         "harmonize subject color temperature with environment, "
         "photorealistic commercial product photography"
     )
@@ -203,6 +250,7 @@ def _build_scene_prompt_lite(theme: str, visual_prompt: str) -> str:
         f"{visual_prompt}, {lighting}, {hint}, "
         "natural grounding and realistic surface contact, "
         "preserve product shape and label readability, "
+        "preserve original product proportions and silhouette, no warped geometry, "
         "photorealistic product photography"
     )
 
@@ -225,7 +273,14 @@ def _reframe_subject_lower(
         nobg_w, nobg_h = no_bg_img.size
 
         if orig_img.size != no_bg_img.size:
-            orig_img = orig_img.resize((nobg_w, nobg_h), Image.Resampling.LANCZOS)
+            # Keep subject geometry stable by fitting the original image into the
+            # target canvas without stretch (letterbox/pillarbox as needed).
+            fitted_orig = ImageOps.contain(orig_img, (nobg_w, nobg_h), Image.Resampling.LANCZOS)
+            padded_orig = Image.new("RGB", (nobg_w, nobg_h), (210, 210, 210))
+            paste_x = (nobg_w - fitted_orig.width) // 2
+            paste_y = (nobg_h - fitted_orig.height) // 2
+            padded_orig.paste(fitted_orig, (paste_x, paste_y))
+            orig_img = padded_orig
 
         bbox = no_bg_img.getbbox()
         if not bbox:
@@ -365,6 +420,7 @@ async def generate_product_scene(
                 original_bytes=inpaint_orig,
                 transparent_png_bytes=inpaint_mask,
                 prompt=scene_prompt,
+                mask_profile="structural_preserve",
             )
             reason_code = _validate_scene_output_bytes(result_bytes)
             if reason_code:
@@ -377,12 +433,14 @@ async def generate_product_scene(
                 # Retry ultra once with stronger grounding guidance.
                 retry_prompt = (
                     f"{scene_prompt}, explicit table or floor plane under product, "
-                    "clear contact shadow and realistic scene depth"
+                    "clear contact shadow and realistic scene depth, "
+                    "keep object proportions exactly the same, avoid flattening or stretching"
                 )
                 result_bytes = await bg_removal_service.inpaint_background(
                     original_bytes=inpaint_orig,
                     transparent_png_bytes=inpaint_mask,
                     prompt=retry_prompt,
+                    mask_profile="structural_preserve",
                 )
                 retry_reason = _validate_scene_output_bytes(result_bytes)
                 if retry_reason:
@@ -414,6 +472,7 @@ async def generate_product_scene(
             original_bytes=inpaint_orig,
             transparent_png_bytes=inpaint_mask,
             prompt=scene_prompt_lite,
+            mask_profile="structural_preserve",
         )
         reason_code = _validate_scene_output_bytes(result_bytes)
         if reason_code:
@@ -446,11 +505,18 @@ async def generate_product_scene(
         scale_factor = _pick_scale_factor(area_ratio, width_ratio, height_ratio)
         offset_y_ratio = _pick_offset_y_ratio(area_ratio)
 
+        scale_factor, offset_y_ratio, category = _apply_category_placement(
+            theme=theme,
+            scale_factor=scale_factor,
+            offset_y_ratio=offset_y_ratio,
+        )
+
         logger.info(
-            "Product scene metrics: area=%.2f width=%.2f height=%.2f -> scale=%.2f offset_y=%.2f",
+            "Product scene metrics: area=%.2f width=%.2f height=%.2f category=%s -> scale=%.2f offset_y=%.2f",
             area_ratio,
             width_ratio,
             height_ratio,
+            category,
             scale_factor,
             offset_y_ratio,
         )

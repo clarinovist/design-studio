@@ -931,11 +931,13 @@ export interface AdCreatorRequest {
     image_base64: string;
     brief?: string;
     brand_kit_id?: string;
+    reference_focus?: 'auto' | 'human' | 'object';
 }
 
 export interface BatchResizeRequest {
     image_url: string;
     target_sizes: string[];
+    reference_focus?: 'auto' | 'human' | 'object';
 }
 
 export interface AdConcept {
